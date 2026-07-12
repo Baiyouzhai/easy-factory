@@ -155,3 +155,17 @@ ERP ← LIMS:  批次消耗明细
 - 库存快照表 (erp_inventory_snapshot)
 - 事务回传队列表 (erp_transaction_queue)
 - 同步日志表 (erp_sync_log)
+
+## 遗留问题
+
+### 当前实现
+- [x] `MaterialCache` — 物料主数据本地缓存
+- [x] `ErpAdapterService` — ERP 适配接口已定义
+- [ ] 库存查询 — 未与任何 ERP 系统对接
+- [ ] 事务回传队列 — 未实现
+- [ ] 同步策略（全量/增量）— 未定义
+
+### 待决策
+1. 对接哪个 ERP？SAP/Oracle/用友/金蝶？
+2. 同步方式：定时轮询还是 ERP 主动推送？
+3. 回传失败的重试策略？最大重试次数和退避算法？

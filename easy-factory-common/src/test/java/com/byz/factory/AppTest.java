@@ -3,26 +3,25 @@ package com.byz.factory;
 import com.alibaba.fastjson2.JSONObject;
 import com.byz.data.Data;
 import com.byz.data.DataExpand;
-import com.byz.data.IData;
-import com.byz.data.IDataExpand;
-import com.byz.data.IExpand;
-import junit.framework.TestCase;
+import org.junit.jupiter.api.Test;
 
-import java.lang.reflect.Type;
 import java.util.Map;
 
-/**
- * Unit test for simple App.
- */
-public class AppTest extends TestCase {
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-    /**
-     * Rigourous Test :-)
-     */
-    public void testApp() {
+/**
+ * common 模块基础测试
+ */
+public class AppTest {
+
+    @Test
+    void testApp() {
         assertTrue(true);
     }
 
+    /**
+     * IDataExpand 手动验证（非自动化测试）
+     */
     public static void main(String[] args) {
         B b = new B();
         b.name = "test";
@@ -42,19 +41,6 @@ public class AppTest extends TestCase {
         B c = b.jsonClone(true);
         System.out.println(c.toJsonString(false));
         System.out.println(c.toJsonString(true));
-
-//        C a = new C();
-//        a.name = "test";
-//        a.data = new JSONObject();
-//        a.data.put("name", "张三");
-//        System.out.println(a.toJsonString());
-//        C b = a.jsonClone();
-//        System.out.println(b.toJsonString());
-//        System.out.println(a == b);
-//        System.out.println(a.equals(b));
-//        System.out.println(a.name == b.name);
-//        System.out.println(a.name.equals(b.name));
-//        System.out.println(a.data == b.data);
     }
 
 }
@@ -87,7 +73,6 @@ class B extends DataExpand {
     @Override
     public JSONObject getExpandProperties() {
         return expand;
-//        return temp.getJSONObject("expand");
     }
 
 }

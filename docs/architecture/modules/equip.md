@@ -156,3 +156,17 @@ Equip → QMS:   设备参数数据 → SPC分析
 - 配方参数明细表 (equip_recipe_param)
 - OEE记录表 (equip_oee_metrics)
 - 设备运行日志表 (equip_runtime_log)
+
+## 遗留问题
+
+### 当前实现
+- [x] `Equipment` — 实现 IMachineModel
+- [x] `EquipmentService` — 接口已定义
+- [ ] 设备配方 (EquipmentRecipe) — 未创建
+- [ ] OEE 计算逻辑 — 未实现
+- [ ] 设备参数实时监控 — 未接入 IoT
+
+### 待决策
+1. 设备配方与 LIMS 配方是什么关系？同一概念还是不同？
+2. OEE 的六大损失如何采集？手动录入还是 IoT 自动？
+3. 设备状态变更是否需要审批流程？

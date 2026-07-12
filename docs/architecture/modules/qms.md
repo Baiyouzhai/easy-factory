@@ -181,3 +181,17 @@ QMS ← LIMS:  实验室检测结果
 - 偏差表 (qms_deviation)
 - CAPA表 (qms_capa)
 - SPC数据表 (qms_spc_data)
+
+## 遗留问题
+
+### 当前实现
+- [x] `InspectionOrder` — 实现 IInspectionOrder
+- [x] `InspectionService` — 接口已定义，判定逻辑未实现
+- [ ] InspectionPlan / InspectionRecord / Deviation / CAPA — 未创建
+- [ ] SPC 实时计算 — 示例脚本存在但未接入
+
+### 待决策
+1. 检验方案（InspectionPlan）存储为结构化字段还是 JSON？
+2. 质量门禁的判定脚本由谁编写？工艺工程师还是质量工程师？
+3. 偏差处理流程：MES 自动暂停 → QMS 偏差 → CAPA → 通知 MES 恢复？还是人工介入？
+4. SPC 控制限如何设定？固定值还是基于历史数据自动计算？

@@ -165,3 +165,17 @@ LIMS ← ERP:   物料批次信息
 - 称量明细表 (lims_weighing_item)
 - 批记录表 (lims_batch_record)
 - 批记录关联表 (lims_batch_process_record, lims_batch_inspection, etc.)
+
+## 遗留问题
+
+### 当前实现
+- [x] `Formula` — 配方基础模型
+- [x] `FormulaService` — 接口已定义
+- [ ] 称量任务 (WeighingTask) — 未创建
+- [ ] 批记录生成 — 未实现
+- [ ] 称量防错脚本 — 示例脚本存在但未与 FormulaService 集成
+
+### 待决策
+1. 配方版本变更后，已创建的称量任务如何处理？（关联旧版本还是自动升级？）
+2. 称量数据来源：天平串口直连还是 IoT 网关？
+3. 批记录是实时生成（边做边记）还是批完成后统一生成？

@@ -13,22 +13,112 @@
   <properties>
     <java.version>21</java.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <nashorn.version>15.4</nashorn.version>
-    <j2v8.version>4.6.0</j2v8.version>
+
+    <!-- Framework -->
     <spring.version>6.2.0</spring.version>
+    <spring-boot.version>3.4.5</spring-boot.version>
+
+    <!-- Script Engine -->
+    <nashorn.version>15.4</nashorn.version>
+
+    <!-- Utilities -->
     <fastjson2.version>2.0.53</fastjson2.version>
     <hutool.version>5.8.25</hutool.version>
     <lombok.version>1.18.30</lombok.version>
-    <junit.version>3.8.1</junit.version>
+
+    <!-- Test -->
+    <junit-jupiter.version>5.11.4</junit-jupiter.version>
   </properties>
 
   <modules>
     <module>easy-factory-common</module>
     <module>easy-factory-core</module>
+    <module>easy-factory-mes</module>
+    <module>easy-factory-qms</module>
+    <module>easy-factory-plm</module>
+    <module>easy-factory-equip</module>
+    <module>easy-factory-lims</module>
+    <module>easy-factory-erp</module>
+    <module>easy-factory-iot</module>
+    <module>easy-factory-eam</module>
+    <module>easy-factory-mps</module>
+    <module>easy-factory-aps</module>
+    <module>easy-factory-wms</module>
+    <module>easy-factory-andon</module>
+    <module>easy-factory-bi</module>
+    <module>easy-factory-scm</module>
+    <module>easy-factory-dms</module>
     <module>easy-factory-test</module>
     <module>easy-factory-web</module>
   </modules>
 
-  <dependencies>
-  </dependencies>
+  <dependencyManagement>
+    <dependencies>
+      <!-- ===== 内部模块 ===== -->
+      <dependency>
+        <groupId>com.byz.factory</groupId>
+        <artifactId>easy-factory-common</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.byz.factory</groupId>
+        <artifactId>easy-factory-core</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+
+      <!-- ===== Spring Boot BOM ===== -->
+      <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-dependencies</artifactId>
+        <version>${spring-boot.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+
+      <!-- ===== 工具库 ===== -->
+      <dependency>
+        <groupId>com.alibaba.fastjson2</groupId>
+        <artifactId>fastjson2</artifactId>
+        <version>${fastjson2.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>cn.hutool</groupId>
+        <artifactId>hutool-core</artifactId>
+        <version>${hutool.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.projectlombok</groupId>
+        <artifactId>lombok</artifactId>
+        <version>${lombok.version}</version>
+      </dependency>
+
+      <!-- ===== JUnit 5 ===== -->
+      <dependency>
+        <groupId>org.junit.jupiter</groupId>
+        <artifactId>junit-jupiter</artifactId>
+        <version>${junit-jupiter.version}</version>
+        <scope>test</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <version>3.13.0</version>
+          <configuration>
+            <release>21</release>
+          </configuration>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-surefire-plugin</artifactId>
+          <version>3.5.2</version>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+  </build>
 </project>

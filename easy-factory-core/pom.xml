@@ -22,44 +22,44 @@
         <dependency>
             <groupId>com.byz.factory</groupId>
             <artifactId>easy-factory-common</artifactId>
-            <version>1.0.0</version>
         </dependency>
 
         <!-- HuTool 工具库 -->
         <dependency>
             <groupId>cn.hutool</groupId>
             <artifactId>hutool-core</artifactId>
-            <version>${hutool.version}</version>
         </dependency>
 
-        <!-- GraalVM JavaScript 引擎（脚本沙箱，待启用） -->
-        <!-- 取消注释以启用 GraalJS 沙箱：
+        <!-- Nashorn 脚本引擎（当前默认引擎，JDK15+独立包） -->
+        <dependency>
+            <groupId>org.openjdk.nashorn</groupId>
+            <artifactId>nashorn-core</artifactId>
+            <version>${nashorn.version}</version>
+        </dependency>
+
+        <!-- GraalVM JS 引擎（计划替代 Nashorn，待启用） -->
+        <!--
         <dependency>
             <groupId>org.graalvm.js</groupId>
             <artifactId>js</artifactId>
             <version>24.1.0</version>
-            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.graalvm.js</groupId>
             <artifactId>js-scriptengine</artifactId>
             <version>24.1.0</version>
-            <scope>provided</scope>
         </dependency>
         -->
 
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>${lombok.version}</version>
             <scope>provided</scope>
         </dependency>
 
         <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>${junit.version}</version>
-            <scope>test</scope>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
         </dependency>
     </dependencies>
 </project>

@@ -154,3 +154,18 @@ MES → LIMS:  请求配方、提交批记录
 - 动作记录表 (mes_action_record)
 - 资源快照表 (mes_resource_snapshot) — 记录执行时的资源状态
 - 与 core 实体通过 code 关联，而非外键强耦合
+
+## 遗留问题
+
+### 当前实现
+- [x] `MesWorkOrder` — 实现 IWorkOrder
+- [x] `WorkOrderService` — 接口已定义，方法未实现
+- [ ] ProcessRecord / ActionRecord — 未创建
+- [ ] 工单状态机 (ILifecycle) — 未接入
+- [ ] 工序流转脚本 — 串行动作链不支持并行工序
+
+### 待决策
+1. 工单引用 Blueprint 创建工序副本还是运行时解析？
+2. 报工粒度：工序级还是动作级？
+3. 并行工序如何建模（同时进行的称量和配料）？
+4. QMS 检验触发时 MES 工序暂停/恢复的机制？

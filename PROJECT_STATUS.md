@@ -16,58 +16,106 @@
 - [x] `IWorkOrder` / `IInspectionOrder` 跨模块抽象
 - [x] `ScriptMetadata` + `ScriptRegistry` + 4 个示例脚本 + `registry.json`
 - [x] `ActionGroup` 正确继承 `model.Action` 并实现复合执行
-- [x] `Process.execute()` 动作链正确串联（前一个动作输出 → 下一个动作输入）
+- [x] `Process.execute()` 动作链正确串联
 - [x] `Process.setResourcePack/setRequireResources` 正常存储
 - [x] `IResource` 继承 `IData` 解决 `toJsonString()` 编译错误
 - [x] `Constant.java` 构造器参数修复
-- [x] `ActionGroup` 继承链修正（`data.Action` → `model.Action`）
 - [x] `BatchStatus` 补充 `RELEASED` (GMP放行节点)
-- [x] `IAction` 增加 `getImportance()` 消除 `script.Action` 孤儿方法
+- [x] `IAction` 增加 `getImportance()` 消除孤儿方法
 
 ### 待进行
 
-- [ ] GraalJS 沙箱实际集成（POM 依赖已预留注释，`GraalScriptEngine` 骨架就绪）
+- [ ] GraalJS 沙箱实际集成
 - [ ] ScriptExecutor (Nashorn) 与 IScriptEngine (GraalJS) 双轨统一
-- [ ] 空壳类补充：
-  - `BillOfMaterial.java` — 作为 `IResourcePack` 子接口
-  - `ProcessRoute.java` / `IProcessRoute.java` — 工序列表包装
-  - `ProductFactoryResult.java` / `ProductProcessResult.java` — 检查结果字段
-  - `IProductChecker.check()` — 返回 null，待实现
+- [ ] 空壳类补充
 - [ ] 单元测试覆盖
-
-### 已知技术债务
-
-- 三个同名 `Action` 类 (`data.Action`, `model.Action`, `script.Action`) — 建议 `script.Action` 重命名为 `ScriptAction`
-- `model.Action extends data.Action` 继承了 `executeType` 字段，但 model 也声明了同名字段（Lombok @Data 叠加手动字段）
-- `data.Action` 作为父类其 `@Data` 会自动生成 getter/setter，但 `model.Action` 手动声明了 `code/name` 导致字段隐藏
 
 ---
 
-## easy-factory-common
+## easy-factory-common（已完成）
 
-### 已完成
 - [x] `IData` + `IExpand` + `IDataExpand` 接口体系
 - [x] `Data` / `DataExpand` 抽象基类
 - [x] `CollectionUtil` 工具类
 
-### 待进行
-- 无明确计划
+---
+
+## 业务模块状态（全部骨架编译通过）
+
+| 模块 | 状态 | 核心模型 | 核心Service接口 |
+|------|------|---------|---------------|
+| `mes` | 骨架 | MesWorkOrder | WorkOrderService |
+| `qms` | 骨架 | InspectionOrder | InspectionService |
+| `plm` | 骨架 | ProcessTemplate | BlueprintService |
+| `equip` | 骨架 | Equipment(IMachineModel) | EquipmentService |
+| `lims` | 骨架 | Formula | FormulaService |
+| `erp` | 骨架 | MaterialCache | ErpAdapterService |
+| `iot` | 骨架 | DeviceConnection | IotGatewayService |
+| `eam` | 骨架 | Asset | EamService |
+| `mps` | 骨架 | ProductionPlan | MpsService |
+| `aps` | 骨架 | Schedule | ApsService |
+| `wms` | 骨架 | Storage, Receipt | WmsService |
+| `andon` | 骨架 | AndonCall | AndonService |
+| `bi` | 骨架 | KpiSnapshot | DashboardService |
+| `scm` | 骨架 | Supplier | ScmService |
+| `dms` | 骨架 | Document | DmsService |
 
 ---
 
-## 待建模块
+## 模块依赖全景
 
-| 模块 | 状态 | 优先级 | 说明 |
-|------|------|--------|------|
-| `easy-factory-db` | 未开始 | P1 | 持久化模块（JPA/MyBatis-Plus） |
-| `easy-factory-mes` | 未开始 | P1 | 工单/工序流转/报工/追溯 |
-| `easy-factory-qms` | 未开始 | P2 | 检验/偏差/CAPA/SPC |
-| `easy-factory-web` | 存根 | P2 | Spring Boot 聚合门户 |
-| `easy-factory-plm` | 未开始 | P3 | 工艺路线/BOM转化/版本管理 |
-| `easy-factory-equip` | 未开始 | P3 | 设备台账/配方/OEE |
-| `easy-factory-lims` | 未开始 | P3 | 配方版本/称量/批记录 |
-| `easy-factory-iot` | 未开始 | P3 | 协议适配/数据采集/指令下发 |
-| `easy-factory-erp` | 未开始 | P3 | 主数据同步/库存/事务回传 |
+```
+                      ┌─────────────────────┐
+                      │  easy-factory-web    │  统一门户
+                      └──────────┬──────────┘
+                                 │
+          ┌──────────────────────┼──────────────────────┐
+          │                      │                      │
+    ┌─────▼─────┐         ┌─────▼─────┐          ┌─────▼─────┐
+    │   MES     │────────▶│   QMS     │          │   Andon   │
+    └─────┬─────┘         └─────┬─────┘          └─────┬─────┘
+          │                      │                      │
+    ┌─────▼─────┐         ┌─────▼─────┐          ┌─────▼─────┐
+    │   WMS     │         │   LIMS    │          │   EAM     │
+    └─────┬─────┘         └─────┬─────┘          └─────┬─────┘
+          │                      │                      │
+    ┌─────▼─────┐                │                ┌─────▼─────┐
+    │   SCM     │                │                │   DMS     │
+    └───────────┘                │                └───────────┘
+                                 │
+               ┌─────────────────┼─────────────────┐
+               │                 │                 │
+         ┌─────▼─────┐    ┌─────▼─────┐     ┌─────▼─────┐
+         │   Equip   │    │   IoT     │     │   ERP     │
+         └───────────┘    └───────────┘     └───────────┘
+               │
+         ┌─────▼─────┐    ┌─────▼─────┐
+         │   MPS     │───▶│   APS     │
+         └───────────┘    └───────────┘
+               │
+         ┌─────▼─────┐
+         │   BI      │  只读消费所有模块数据
+         └───────────┘
+                                 │
+                      ┌──────────▼──────────┐
+                      │  easy-factory-core  │
+                      │     领域内核         │
+                      └─────────────────────┘
+```
+
+---
+
+## 实施顺序（详见 docs/implementation/roadmap.md）
+
+| 阶段 | 模块 | 并行度 | 关键依赖 |
+|------|------|--------|---------|
+| Phase 1 | erp, iot, plm, equip, scm, dms | 6并行 | 无（仅依赖 core） |
+| Phase 2 | lims, wms, mps | 3并行 | erp/plm/scm |
+| Phase 3 | **mes**, aps | 串行 | plm+equip+wms+lims |
+| Phase 4 | qms, andon, eam | 2并行 | mes(+iot) |
+| Phase 5 | bi, web, test | 3并行 | 全部 |
+
+> **mes 是集成枢纽，预计占总工作量 40%+**
 
 ---
 
@@ -75,4 +123,7 @@
 
 | 日期 | 内容 |
 |------|------|
-| 2026-07-12 | 初始创建，从 CLAUDE.md 迁移工作状态 |
+| 2026-07-12 | 初始创建，core 接口体系完成 |
+| 2026-07-12 | 8个业务模块骨架创建，编译通过 |
+| 2026-07-12 | 移除 easy-factory-db（持久化回归各模块） |
+| 2026-07-12 | 全部 15 个业务模块骨架创建 + 编译测试全通过（20模块总计） |

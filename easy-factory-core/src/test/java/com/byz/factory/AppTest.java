@@ -1,24 +1,17 @@
 package com.byz.factory;
 
-import com.byz.factory.testing.ProductChecker;
-import junit.framework.Test;
-import junit.framework.TestCase;
-import junit.framework.TestSuite;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Unit test for simple App.
+ * core 模块测试
  */
-public class AppTest extends TestCase {
+public class AppTest {
 
-    /**
-     * Rigourous Test :-)
-     */
-    public void testApp()
-    {
-        assertTrue( true );
-    }
-
-    public static void main(String[] args) {
+    @Test
+    void testApp() {
+        assertTrue(true);
     }
 
 }

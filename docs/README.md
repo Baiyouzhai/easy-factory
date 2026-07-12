@@ -16,8 +16,17 @@
 - [easy-factory-erp](architecture/modules/erp.md) — 资源计划集成
 - [easy-factory-iot](architecture/modules/iot.md) — 设备互联
 - [easy-factory-web](architecture/modules/web.md) — Web 门户
+- [easy-factory-eam](architecture/modules/eam.md) — 企业资产管理
+- [easy-factory-mps](architecture/modules/mps.md) — 主生产计划
+- [easy-factory-aps](architecture/modules/aps.md) — 高级排程系统
+- [easy-factory-wms](architecture/modules/wms.md) — 仓储管理系统
+- [easy-factory-andon](architecture/modules/andon.md) — 安灯异常呼叫
+- [easy-factory-bi](architecture/modules/bi.md) — 看板与报表
+- [easy-factory-scm](architecture/modules/scm.md) — 供应链管理
+- [easy-factory-dms](architecture/modules/dms.md) — 文档管理（GMP合规）
 
 ### 🔧 实现
+- [实施路线图](implementation/roadmap.md) — 五阶段实施顺序（★ 必读）
 - [开发指南](implementation/guide.md) — 环境搭建、模块开发顺序、构建部署
 - [编码规范](implementation/conventions.md) — 命名、接口设计、异常处理、测试规范
 

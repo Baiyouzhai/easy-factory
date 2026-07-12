@@ -141,3 +141,17 @@ PLM → PLM:   版本管理、审批流
 - 工艺参数表 (plm_process_parameter)
 - BOM转化规则表 (plm_bom_converter)
 - 版本差异记录表 (plm_version_diff)
+
+## 遗留问题
+
+### 当前实现
+- [x] `ProcessTemplate` — 工艺模板
+- [x] `BlueprintService` — 接口已定义
+- [ ] IBlueprint 版本管理 — 未实现
+- [ ] BOM 转化器 (EBOM→PBOM→MBOM) — 未实现
+- [ ] 工艺参数标准库 — 未创建
+
+### 待决策
+1. 蓝图的"版本"是递增字符串（1.0→2.0）还是语义版本（major.minor）？
+2. EBOM→PBOM→MBOM 的转化规则如何配置？用脚本还是规则引擎？
+3. PLM 与 MES 的交互：蓝图发布后推送通知还是 MES 主动拉取？

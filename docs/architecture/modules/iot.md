@@ -169,3 +169,17 @@ IoT ← MES:    开工/停机指令 → 下发到设备
 - 报警事件表 (iot_alarm_event) — 关系库
 - 指令队列表 (iot_command) — 关系库
 - 标签时序数据 — 时序库 (TSDB)，不放在关系库
+
+## 遗留问题
+
+### 当前实现
+- [x] `DeviceConnection` — 设备连接管理
+- [x] `IotGatewayService` — 网关服务接口已定义
+- [ ] 协议适配器 (OPC UA/Modbus/MQTT/S7) — 未实现
+- [ ] 时序数据存储 — 未确定时序数据库
+- [ ] 报警联动 — 未实现（报警→QMS偏差/Equip停机/MES暂停）
+
+### 待决策
+1. 协议适配器：自研还是集成现有库（Eclipse Milo OPC UA / Modbus4J）？
+2. 时序数据库：InfluxDB vs TimescaleDB vs TDengine？
+3. 边缘计算：数据过滤和聚合放在设备侧还是服务器侧？
