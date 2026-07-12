@@ -1,4 +1,4 @@
-package com.byz.factory.core;
+package com.byz.factory.model;
 
 /**
  * 工艺路线

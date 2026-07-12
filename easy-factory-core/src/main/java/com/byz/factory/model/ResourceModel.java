@@ -1,4 +1,4 @@
-package com.byz.factory.core.resource;
+package com.byz.factory.model;
 
 import com.byz.factory.data.Dict;
 import com.byz.factory.data.Resource;
@@ -7,7 +7,7 @@ import java.math.BigDecimal;
 import java.util.Objects;
 
 /**
- * 资源
+ * 资源模型实现
  *
  * @author 苏政
  */
@@ -56,7 +56,7 @@ public class ResourceModel extends Resource implements IResourceModel {
 
     @Override
     public boolean isEmpty() {
-        return 0 == BigDecimal.ZERO.compareTo(this.number);
+        return BigDecimal.ZERO.compareTo(this.getNumber()) >= 0;
     }
 
     @Override
@@ -73,6 +73,17 @@ public class ResourceModel extends Resource implements IResourceModel {
         BigDecimal num = new BigDecimal(number.toString());
         this.number = getNumber().subtract(num);
         return this;
+    }
+
+    @Override
+    public IResourceModel copy() {
+        return new ResourceModel(getName(), getGroup(), getType(), getNumber());
+    }
+
+    @Override
+    public boolean require() {
+        // 默认所有资源都是必要的，子类可覆盖
+        return true;
     }
 
 }

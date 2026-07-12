@@ -1,35 +1,41 @@
-package com.byz.factory.core;
+package com.byz.factory.script;
 
-import cn.hutool.core.util.StrUtil;
 import com.byz.factory.data.Constant;
+import com.byz.factory.data.Dict;
 import com.byz.factory.exception.ActionException;
+import com.byz.factory.model.IAction;
+import com.byz.factory.model.IProcess;
+import com.byz.factory.model.IResourceModel;
+import com.byz.factory.model.IResourcePack;
 
 import java.util.Objects;
 
 /**
- * (生产)动作
+ * 脚本化动作 — 实现 IAction 和 IScript，支持通过 JavaScript 脚本定义执行逻辑。
  *
  * @author 苏政
  */
-public class Action implements IAction {
+public class Action implements IAction, IScript {
 
     protected String code;
     protected String name;
-    protected Level level;
+    protected Dict.Importance level;
     protected long order;
     protected String script;
 
-    public Action(String code, String name, Level level, long order) {
+    public Action(String code, String name, Dict.Importance level, long order) {
         this.code = Objects.requireNonNull(code, "code cannot be null");
         this.name = Objects.requireNonNull(name, "name cannot be null");
         this.level = Objects.requireNonNull(level, "level cannot be null");
         this.order = order;
     }
+
     public Action(String code, String name) {
-        this(code, name, Level.Optional, System.currentTimeMillis());
+        this(code, name, Dict.Importance.Optional, System.currentTimeMillis());
     }
+
     public Action() {
-        this(Constant.Nothing, Constant.NothingTodo, Level.Optional, System.currentTimeMillis());
+        this(Constant.Nothing, Constant.NothingTodo, Dict.Importance.Optional, System.currentTimeMillis());
     }
 
     @Override
@@ -50,12 +56,11 @@ public class Action implements IAction {
         this.name = name;
     }
 
-    @Override
-    public Level getImportant() {
+    public Dict.Importance getImportance() {
         return level;
     }
 
-    public void setImportance(Level level) {
+    public void setImportance(Dict.Importance level) {
         this.level = level;
     }
 
@@ -64,31 +69,27 @@ public class Action implements IAction {
         return order;
     }
 
+    public void setOrder(long order) {
+        this.order = order;
+    }
+
     @Override
     public String getScript() {
         return script;
     }
 
     @Override
-    public IAction setScript(String script) {
-        if (StrUtil.isBlank(script)) throw new ActionException("script cannot be null");
+    public Action setScript(String script) {
+        if (null == script || script.isBlank()) {
+            throw new ActionException("script cannot be null or blank");
+        }
         this.script = script;
         return this;
     }
 
     @Override
-    public IAction setRequireResources(IResource... resources) {
-        return null;
-    }
-
-    public void setOrder(long order) {
-        this.order = order;
-    }
-
-    @Override
-    public IResourcePack execute(IProcess process, IResource... resources) {
+    public IResourcePack execute(IProcess process, IResourceModel... resources) {
         return process.getResourcePack();
     }
-
 
 }

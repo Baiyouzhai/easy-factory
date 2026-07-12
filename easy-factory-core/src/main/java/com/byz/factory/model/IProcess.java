@@ -1,9 +1,5 @@
-package com.byz.factory.core;
+package com.byz.factory.model;
 
-import com.byz.factory.core.action.IAction;
-import com.byz.factory.core.resource.IResourceModel;
-import com.byz.factory.core.resource.IResourcePack;
-import com.byz.factory.core.resource.ResourcePack;
 import com.byz.factory.exception.ActionException;
 
 import java.util.ArrayList;
@@ -11,7 +7,9 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * 工序
+ * 工序 — 生产流程中的一个步骤，包含一组有序动作。
+ * <p>
+ * 工序按 order 排序，通过 execute() 遍历动作链处理输入资源并累积输出资源。
  *
  * @author 苏政
  */
@@ -41,7 +39,7 @@ public interface IProcess {
     }
 
     /**
-     * 动作清单(默认isEmpty)
+     * 动作清单
      *
      * @return 动作清单
      */
@@ -91,18 +89,19 @@ public interface IProcess {
     IProcess setRequireResources(IResourceModel... resources);
 
     /**
-     * 执行生产动作（集合）
+     * 执行生产动作（集合）— 按顺序执行所有动作，前一个动作的输出作为后一个动作的输入。
      *
      * @param inputs 输入，上工序输出
-     * @return 本工序输出
+     * @return 本工序最终输出资源包
      */
     default IResourcePack execute(IResourceModel... inputs) {
         List<IAction> actions = getActions();
-        if (null == actions) throw new ActionException("无效工序");
+        if (null == actions) throw new ActionException("无效工序: 动作清单为null");
         if (actions.isEmpty()) throw new ActionException("动作清单为空");
         IResourcePack output = actions.get(0).execute(this, inputs);
         for (int i = 1; i < actions.size(); i++) {
-            output = actions.get(i).execute(this, inputs);
+            IResourceModel[] stepInput = output.getResources();
+            output = actions.get(i).execute(this, stepInput);
         }
         return output;
     }

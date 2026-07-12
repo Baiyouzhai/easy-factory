@@ -1,16 +1,17 @@
-package com.byz.factory.core;
+package com.byz.factory.model;
 
-import com.byz.factory.core.resource.IResourceModel;
+import com.byz.factory.data.Dict;
 
 /**
- * (生产)设备
+ * (生产)设备 — 分组固定为 SourceGroup.Machine
+ *
  * @author 苏政
  */
 public interface IMachineModel extends IResourceModel {
 
     @Override
-    default GroupType getGroup() {
-        return GroupType.Machine;
+    default Dict.SourceGroup getGroup() {
+        return Dict.SourceGroup.Machine;
     }
 
 }

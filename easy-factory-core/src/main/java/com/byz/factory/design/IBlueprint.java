@@ -1,6 +1,6 @@
 package com.byz.factory.design;
 
-import com.byz.factory.core.IProcess;
+import com.byz.factory.model.IProcess;
 
 import java.util.List;
 

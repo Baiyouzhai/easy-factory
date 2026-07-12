@@ -1,13 +1,13 @@
 package com.byz.factory.design;
 
-import com.byz.factory.core.resource.IResource;
+import com.byz.factory.model.IResourceModel;
 
 import java.math.BigDecimal;
 
 /**
  * 估算资源
  */
-public interface IEstimateResource extends IResource {
+public interface IEstimateResourceModel extends IResourceModel {
 
     /**
      * 预估值

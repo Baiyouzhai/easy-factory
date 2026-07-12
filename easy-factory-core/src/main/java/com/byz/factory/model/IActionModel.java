@@ -1,72 +1,70 @@
-package com.byz.factory.core.action;
+package com.byz.factory.model;
 
-import com.byz.factory.core.IProcess;
-import com.byz.factory.core.resource.ResourceModel;
-import com.byz.factory.core.ScriptExecutor;
-import com.byz.factory.core.resource.IResourceModel;
-import com.byz.factory.core.resource.IResourcePack;
+import com.byz.factory.data.Dict;
 
 /**
- * (生产)动作
+ * (生产)动作模型 — 带脚本和重要性管理的动作。
+ * <p>
+ * 在 {@link IAction} 基础之上增加：脚本执行、资源需求声明、重要性分级。
  *
  * @author 苏政
+ * @see IAction
+ * @see Action
  */
-public interface IActionModel {
+public interface IActionModel extends IAction {
 
     /**
-     * 编码
+     * 获取执行脚本（JavaScript）
      *
-     * @return 编码
+     * @return 脚本内容，可能为 null（无脚本）
      */
-    String getCode();
-
-    /**
-     * 名称, 在工序下为 工序-名称
-     *
-     * @return 名称
-     */
-    String getName();
-
-    /**
-     * 排序
-     *
-     * @return 排序
-     */
-    long getOrder();
-
-    /**
-     * 要求资源
-     *
-     * @return 资源
-     */
-    default IResourceModel[] requireResources() {
-        return ResourceModel.Empty;
+    default String getScript() {
+        return null;
     }
 
     /**
-     * 设置要求资源
+     * 重要性
      *
-     * @param resources 资源
-     * @return this
+     * @return 重要性等级
      */
-    IAction setRequireResources(IResourceModel... resources);
+    Dict.Importance getImportance();
 
     /**
-     * 对输入进行处理
+     * 声明执行此动作所需的前置资源
      *
-     * @param process 工序
-     * @param resources 资源(输入)
-     * @return 资源(输出)
+     * @return 所需资源列表
      */
+    IResourceModel[] requireResources();
+
+    /**
+     * 设置所需资源
+     *
+     * @param resources 资源列表
+     * @return this
+     */
+    IActionModel setRequireResources(IResourceModel... resources);
+
+    /**
+     * 对输入进行处理（默认实现：调用脚本或返回工序资源包）
+     *
+     * @param process   工序上下文
+     * @param resources 输入资源
+     * @return 输出资源包
+     */
+    @Override
     default IResourcePack execute(IProcess process, IResourceModel... resources) {
         IResourcePack resourcePack = process.getResourcePack();
-        IResourceModel[] requireResources = requireResources();
-        if (null == requireResources) return resourcePack;
-        if (0 == requireResources.length) return resourcePack;
-        ScriptExecutor.Declare("\nfunction " + getName() + "(process, resources) { \n\t" + getScript() + "\n\t}");
-        Object result = ScriptExecutor.Execute("\nexecute(process, resources)", process, resources);
-        if (result instanceof IResourcePack) return (IResourcePack) result;
-        throw new RuntimeException("脚本执行结果类型错误");
+        String script = getScript();
+        if (null == script || script.isBlank()) {
+            return resourcePack;
+        }
+        ScriptExecutor.Declare("\nfunction " + getName() + "(process, resources) { \n\t" + script + "\n}");
+        Object result = ScriptExecutor.Execute("execute", process, resources);
+        if (result instanceof IResourcePack pack) {
+            return pack;
+        }
+        throw new RuntimeException("脚本执行结果类型错误: 期望 IResourcePack, 实际 " +
+                (result == null ? "null" : result.getClass().getName()));
     }
 
 }

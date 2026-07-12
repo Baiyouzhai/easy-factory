@@ -1,16 +1,19 @@
 package com.byz.factory.manufacture;
 
-import com.byz.factory.core.resource.IResource;
-import com.byz.factory.design.IProductInfo;
+import com.byz.factory.data.Dict;
+import com.byz.factory.design.IProductInfoModel;
+import com.byz.factory.model.IResourceModel;
 
 /**
- * 实物产品
+ * 实物产品 — 携带产品信息的物理实体
+ *
+ * @author 苏政
  */
-public interface IProduct extends IResource {
+public interface IProductModel extends IResourceModel {
 
     @Override
-    default GroupType getGroup() {
-        return GroupType.Product;
+    default Dict.SourceGroup getGroup() {
+        return Dict.SourceGroup.Product;
     }
 
     /**
@@ -18,6 +21,6 @@ public interface IProduct extends IResource {
      *
      * @return 产品信息
      */
-    IProductInfo getProductInfo();
+    IProductInfoModel getProductInfo();
 
 }

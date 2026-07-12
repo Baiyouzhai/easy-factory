@@ -1,9 +1,4 @@
-package com.byz.factory.core;
-
-import javax.script.Compilable;
-import javax.script.Invocable;
-import javax.script.ScriptEngine;
-import javax.script.ScriptEngineManager;
+package com.byz.factory.model;
 
 public class FactoryScriptExecutor extends ScriptExecutor {
 

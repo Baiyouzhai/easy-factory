@@ -1,23 +1,21 @@
 package com.byz.factory.testing;
 
-import com.byz.factory.design.IProductInfo;
-
-import java.util.List;
+import com.byz.factory.design.IProductInfoModel;
 
 public class ProductChecker implements IProductChecker {
 
-    public static ProductChecker Create(IProductInfo productInfo) {
+    public static ProductChecker Create(IProductInfoModel productInfo) {
         return new ProductChecker(productInfo);
     }
 
-    protected IProductInfo productInfo;
+    protected IProductInfoModel productInfo;
 
-    public ProductChecker(IProductInfo productInfo) {
+    public ProductChecker(IProductInfoModel productInfo) {
         this.productInfo = productInfo;
     }
 
     @Override
-    public IProductInfo getProductInfo() {
+    public IProductInfoModel getProductInfo() {
         return productInfo;
     }
 

@@ -1,4 +1,4 @@
-package com.byz.factory.core.resource;
+package com.byz.factory.model;
 
 import com.byz.factory.exception.ResourceException;
 

@@ -1,6 +1,6 @@
 package com.byz.factory.plan;
 
-import com.byz.factory.design.IProductInfo;
+import com.byz.factory.design.IProductInfoModel;
 
 public interface IProduct {
 
@@ -9,6 +9,6 @@ public interface IProduct {
      *
      * @return 产品信息
      */
-    IProductInfo getProductInfo();
+    IProductInfoModel getProductInfo();
 
 }

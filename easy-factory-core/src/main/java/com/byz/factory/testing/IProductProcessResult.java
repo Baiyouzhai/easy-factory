@@ -1,6 +1,6 @@
 package com.byz.factory.testing;
 
-import com.byz.factory.core.IProcess;
+import com.byz.factory.model.IProcess;
 
 import java.io.PrintStream;
 

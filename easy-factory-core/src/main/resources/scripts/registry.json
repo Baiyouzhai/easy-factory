@@ -1,0 +1,54 @@
+{
+  "version": "1.0.0",
+  "updatedAt": "2026-07-12T00:00:00Z",
+  "scripts": [
+    {
+      "id": "qms.quality-gate.v1",
+      "path": "qms/quality_gate.js",
+      "version": "1.0.0",
+      "module": "qms",
+      "status": "ACTIVE",
+      "name": "质量门禁判定",
+      "description": "根据检验记录判定放行/让步/拒收，不合格时触发偏差",
+      "author": "engineer-a",
+      "since": "2026-07-12",
+      "timeoutMs": 30000
+    },
+    {
+      "id": "mes.weighing-check.v1",
+      "path": "mes/weighing_check.js",
+      "version": "1.0.0",
+      "module": "mes",
+      "status": "ACTIVE",
+      "name": "称量防错",
+      "description": "对比天平读数与配方量，超差时拒绝并记录偏差",
+      "author": "engineer-b",
+      "since": "2026-07-12",
+      "timeoutMs": 10000
+    },
+    {
+      "id": "qms.spc-check.v1",
+      "path": "qms/spc_check.js",
+      "version": "1.0.0",
+      "module": "qms",
+      "status": "ACTIVE",
+      "name": "SPC规则检测",
+      "description": "对计量型检验值执行Western Electric SPC规则检测",
+      "author": "engineer-a",
+      "since": "2026-07-12",
+      "timeoutMs": 5000
+    },
+    {
+      "id": "common.resource-validate.v1",
+      "path": "common/resource_validate.js",
+      "version": "1.0.0",
+      "module": "common",
+      "status": "ACTIVE",
+      "name": "资源校验",
+      "description": "校验输入资源是否满足工序要求",
+      "author": "engineer-a",
+      "since": "2026-07-12",
+      "timeoutMs": 5000
+    }
+  ]
+}

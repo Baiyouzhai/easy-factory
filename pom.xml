@@ -5,21 +5,30 @@
   <groupId>com.byz.factory</groupId>
   <artifactId>easy-factory</artifactId>
   <version>1.0.0</version>
-  <packaging>jar</packaging>
+  <packaging>pom</packaging>
 
   <name>easy-factory</name>
   <url>http://maven.apache.org</url>
 
   <properties>
+    <java.version>21</java.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <nashorn.version>15.4</nashorn.version>
+    <j2v8.version>4.6.0</j2v8.version>
+    <spring.version>6.2.0</spring.version>
+    <fastjson2.version>2.0.53</fastjson2.version>
+    <hutool.version>5.8.25</hutool.version>
+    <lombok.version>1.18.30</lombok.version>
+    <junit.version>3.8.1</junit.version>
   </properties>
 
+  <modules>
+    <module>easy-factory-common</module>
+    <module>easy-factory-core</module>
+    <module>easy-factory-test</module>
+    <module>easy-factory-web</module>
+  </modules>
+
   <dependencies>
-    <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <version>3.8.1</version>
-      <scope>test</scope>
-    </dependency>
   </dependencies>
 </project>

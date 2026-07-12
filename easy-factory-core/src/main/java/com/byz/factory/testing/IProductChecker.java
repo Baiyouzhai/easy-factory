@@ -1,9 +1,9 @@
 package com.byz.factory.testing;
 
-import com.byz.factory.core.IFactory;
-import com.byz.factory.core.IProcess;
+import com.byz.factory.model.IFactory;
+import com.byz.factory.model.IProcess;
 import com.byz.factory.design.IBlueprint;
-import com.byz.factory.design.IProductInfo;
+import com.byz.factory.design.IProductInfoModel;
 
 import java.util.List;
 
@@ -17,7 +17,7 @@ public interface IProductChecker {
      *
      * @return 产品
      */
-    IProductInfo getProductInfo();
+    IProductInfoModel getProductInfo();
 
     /**
      * (产品)工序清单

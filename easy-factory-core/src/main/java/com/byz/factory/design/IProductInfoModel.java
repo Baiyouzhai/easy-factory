@@ -1,14 +1,18 @@
 package com.byz.factory.design;
 
-import com.byz.factory.core.resource.IResource;
+import com.byz.factory.data.Dict;
+import com.byz.factory.model.IResourceModel;
 
 /**
- * 产品
+ * 产品信息 — 是资源的一种，分组固定为 SourceGroup.Product
+ *
+ * @author 苏政
  */
-public interface IProductInfo extends IResource {
+public interface IProductInfoModel extends IResourceModel {
 
-    default GroupType getGroup() {
-        return GroupType.Product;
+    @Override
+    default Dict.SourceGroup getGroup() {
+        return Dict.SourceGroup.Product;
     }
 
     /**
@@ -19,7 +23,7 @@ public interface IProductInfo extends IResource {
     String getName();
 
     /**
-     * 蓝图
+     * 蓝图（产品工序路线）
      *
      * @return 蓝图
      */

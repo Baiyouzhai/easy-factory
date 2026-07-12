@@ -1,12 +1,9 @@
-package com.byz.factory.core;
+package com.byz.factory.model;
 
 import javax.script.Compilable;
 import javax.script.Invocable;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 public class ScriptExecutor {
 

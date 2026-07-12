@@ -7,7 +7,7 @@ import org.springframework.beans.BeanUtils;
 import java.lang.reflect.Type;
 import java.util.Map;
 
-public interface IBaseData extends Cloneable {
+public interface IData {
 
     /**
      * 复制属性
@@ -16,7 +16,7 @@ public interface IBaseData extends Cloneable {
      * @param ignoreProperties 忽略属性
      * @return this
      */
-    default IBaseData copyProperties(Object source, String... ignoreProperties) {
+    default IData copyProperties(Object source, String... ignoreProperties) {
         if (null == source) return this;
         BeanUtils.copyProperties(source, this, ignoreProperties);
         return this;
@@ -45,18 +45,9 @@ public interface IBaseData extends Cloneable {
      *
      * @return 克隆
      */
-    default IBaseData jsonClone() {
+    default <T extends IData> T jsonClone() {
         String jsonString = toJsonString();
         return JSONObject.parseObject(jsonString, (Type) getClass());
-    }
-
-    /**
-     * 克隆, 使用 {@link IBaseData#jsonClone()}
-     *
-     * @return 克隆
-     */
-    default IBaseData clone() {
-        return jsonClone();
     }
 
 }
