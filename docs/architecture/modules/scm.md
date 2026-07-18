@@ -68,3 +68,17 @@ SCM → QMS:    供应商批次 → 来料检验关联
 1. SCM 自建还是对接外部 ERP 的采购模块？大多数场景下 ERP 已包含 SCM
 2. 供应商评分模型：仅看质量和交期，还是加成本和响应速度？
 3. 采购审批流：在 easy-factory 内实现还是对接 OA 系统？
+
+## AI 协作建议（2026-07-18）
+
+SCM 管理供应商和采购——轻量模块，与 ERP/WMS 协作。
+
+### 推荐实施
+
+1. **继承 BaseEntity** — `Supplier` 已继承 `BaseEntity`（获得 code/name/timestamps）。可进一步实现 `IAuditable` 以追踪供应商准入/降级的操作人。
+
+2. **事件集成**:
+   - 供应商资质变更 → `scm.supplier.qualified` / `scm.supplier.disqualified`
+   - 采购订单创建 → `scm.po.created`（WMS 订阅以生成收货单）
+   - 来料 → WMS 收货 → QMS 来料检（IQC）→ 放行/退货
+

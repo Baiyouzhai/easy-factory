@@ -1,24 +1,23 @@
 package com.byz.factory.erp.model;
 
-import com.byz.data.DataExpand;
+import com.byz.factory.shared.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.time.Instant;
 
 /**
- * ERP 物料主数据本地缓存 — 定时从 ERP 同步。
+ * ERP 物料主数据本地缓存 — 继承 BaseEntity 获得 code/name/audit。
  *
  * @author 苏政
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
-public class MaterialCache extends DataExpand {
+public class MaterialCache extends BaseEntity {
 
-    private String materialCode;
     private String description;
     private String unit;
-    private String materialType;        // ROH/HALB/FERT
+    private String materialType;
     private boolean batchManaged;
     private int shelfLifeDays;
     private String ghsClass;
@@ -26,7 +25,7 @@ public class MaterialCache extends DataExpand {
     private String sourceSystem;
 
     public MaterialCache(String materialCode, String description, String unit) {
-        this.materialCode = materialCode;
+        super(materialCode, description);
         this.description = description;
         this.unit = unit;
     }

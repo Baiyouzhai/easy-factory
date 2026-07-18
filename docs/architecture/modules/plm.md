@@ -155,3 +155,22 @@ PLM → PLM:   版本管理、审批流
 1. 蓝图的"版本"是递增字符串（1.0→2.0）还是语义版本（major.minor）？
 2. EBOM→PBOM→MBOM 的转化规则如何配置？用脚本还是规则引擎？
 3. PLM 与 MES 的交互：蓝图发布后推送通知还是 MES 主动拉取？
+
+## AI 协作建议（2026-07-18）
+
+PLM 的核心职责是产品定义——将客户需求转化为可执行的蓝图。
+
+### 推荐实施
+
+1. **实现蓝图三阶段管道** — core 已定义完整链条：
+   ```
+   CustomerSpec → EngineeringBOM → WorkOrder(冻结核准版)
+   ```
+   PLM 负责前两步，MES 使用最终输出。
+
+2. **使用 IProcessParameter** — core 的 `IProcessParameter`（code/name/uom/targetValue/lowerLimit/upperLimit）是工艺参数的标准定义。`ProcessTemplate` 中的参数应使用此接口。
+
+3. **版本管理** — 使用 `IBlueprint.getVersion()` + `HasVersion` 接口。PLM 的 `BlueprintService` 管理版本发布。
+
+4. **用 IMethod 标记 SOP/规范** — `IMethod`（固定 SourceGroup.Method）表示工艺方法、SOP、检验标准等。蓝图引用 IMethod 资源，而非内嵌文档。
+

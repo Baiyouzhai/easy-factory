@@ -107,7 +107,7 @@ public interface IResourcePack {
 ## 数据字典 (Dict)
 
 ```
-Dict.Execute:   Noting | Create | Add | Use | Change | Convert
+Dict.Execute:   Nothing | Create | Add | Use | Change | Convert
 Dict.Control:   Default | Interrupt | Count | Timing | Repeat
 Dict.Importance: Optional | Require
 Dict.SourceGroup: Other | Personnel | Machine | Material | Method | Environment
@@ -285,3 +285,28 @@ QMS 的核心实体：检验编号、检验类型(IQC/IPQC/FQC/OQC)、检验方�
 3. 脚本引擎 ScriptExecutor (Nashorn) 与 IScriptEngine (GraalJS) 双轨并存，待统一
 4. `IProductChecker.check()` 返回 null，待实现实际检查逻辑
 5. 无正式单元测试覆盖
+
+## AI 协作建议（2026-07-18）
+
+以下为本次设计评审后，建议在后续会话中优先处理的事项：
+
+### 优先级 P0 — 阻塞性问题
+
+1. **修复脚本引擎空指针** — `ScriptEngines.getDefault()` 返回 null，导致 `IActionModel.execute()` 脚本路径崩溃。建议：在 `IActionModel.execute()` 默认实现中增加 null 检查，引擎不可用时静默回退到 executeType 分支。
+
+2. **修复 DomainEventPublisher.subscribePrefix()** — Javadoc 声称前缀匹配，实际做精确匹配。应遍历订阅者 key，用 `startsWith()` 匹配。同时补充 `unsubscribe()` 方法。
+
+3. **更新已知待解决问题清单** — 部分条目已过期：
+   - `ProcessRoute` 空壳 → `IProcessRoute` 已删除，但 ProcessRoute 类仍保留
+   - `BillOfMaterial` 空壳 → 已接口化 `IBillOfMaterial`
+   - `IProductChecker.check()` 返回 null → 确认是否仍存在
+   - 无单元测试 → 现有 70 个测试，需更新描述
+
+### 优先级 P1 — 增强健壮性
+
+4. **Action 子接口桥接** — `IEquipmentAction.executeEquipment()` 等 5 个子接口方法与 `IAction.execute()` 标准路径无连接。建议在每个子接口中提供 `default execute()` 桥接实现，先调用 `IActionModel.super.execute()`，再调用子接口专用方法。
+
+5. **GraalJS 依赖** — POM 中已注释。要么正式启用（解决依赖下载问题），要么标注为长期 TODO 并更新文档说明当前状态。
+
+6. **补充缺失的实现** — `IBlueprint` 是引用最频繁的接口（被 IBatch、IWorkOrder、所有 operation 计算器使用），但仍无具体实现类。建议在 core 或 test 模块提供一个 `SimpleBlueprint` 实现。
+

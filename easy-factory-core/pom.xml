@@ -30,14 +30,14 @@
             <artifactId>hutool-core</artifactId>
         </dependency>
 
-        <!-- Nashorn 脚本引擎（当前默认引擎，JDK15+独立包） -->
+        <!-- Nashorn 脚本引擎（过渡引擎，JDK15+需独立包） -->
         <dependency>
             <groupId>org.openjdk.nashorn</groupId>
             <artifactId>nashorn-core</artifactId>
             <version>${nashorn.version}</version>
         </dependency>
 
-        <!-- GraalVM JS 引擎（计划替代 Nashorn，待启用） -->
+        <!-- GraalVM JS 引擎（计划备选引擎，待启用） -->
         <!--
         <dependency>
             <groupId>org.graalvm.js</groupId>
@@ -48,6 +48,16 @@
             <groupId>org.graalvm.js</groupId>
             <artifactId>js-scriptengine</artifactId>
             <version>24.1.0</version>
+        </dependency>
+        -->
+
+        <!-- J2V8 — V8 JavaScript 引擎 Java 绑定（待启用） -->
+        <!--
+        <dependency>
+            <groupId>com.eclipsesource.j2v8</groupId>
+            <artifactId>j2v8</artifactId>
+            <version>6.3.4</version>
+            <scope>compile</scope>
         </dependency>
         -->
 

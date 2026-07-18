@@ -1,5 +1,8 @@
 package com.byz.factory.script;
 
+import com.byz.factory.process.IProcess;
+import com.byz.factory.resource.IResourceItem;
+
 /**
  * 脚本引擎抽象 — 统一脚本编译与执行的接口。
  * <p>
@@ -59,5 +62,16 @@ public interface IScriptEngine {
      * @return true 如果支持沙箱安全限制
      */
     boolean isSandboxed();
+
+    /**
+     * 创建脚本执行上下文
+     *
+     * @param process        当前工序
+     * @param inputResources 输入资源
+     * @return 执行上下文
+     */
+    default ScriptContext createContext(IProcess process, IResourceItem... inputResources) {
+        throw new UnsupportedOperationException("createContext not implemented by " + getName());
+    }
 
 }

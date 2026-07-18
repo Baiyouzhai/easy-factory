@@ -1,7 +1,7 @@
 package com.byz.factory.lims.service;
 
 import com.byz.factory.lims.model.Formula;
-import com.byz.factory.model.IResourcePack;
+import com.byz.factory.resource.IResourcePack;
 
 /**
  * 配方服务 — LIMS 模块核心。

@@ -179,3 +179,22 @@ LIMS ← ERP:   物料批次信息
 1. 配方版本变更后，已创建的称量任务如何处理？（关联旧版本还是自动升级？）
 2. 称量数据来源：天平串口直连还是 IoT 网关？
 3. 批记录是实时生成（边做边记）还是批完成后统一生成？
+
+## AI 协作建议（2026-07-18）
+
+LIMS 管理配方和称量——与 MES 的物料追溯紧密集成。
+
+### 推荐实施
+
+1. **使用 IResourcePack 管理配方** — core 的 `IResourcePack`（merge/compress/copy）天然适合配方管理。`Formula` 应将其组件存储为 `IResourcePack`，每个 `IResourceItem` 附带 `getUom()`（KG/G/MG 等）。
+
+2. **批次集成** — 称量任务关联 core 的 `IBatch`。称量完成后，通过 `ITraceable` 记录 before/after 物料快照。
+
+3. **称量防错** — 使用 `IConstrainedTimed.checkConstraints()` 校验称量时间窗。使用 `IProcessParameter`（targetValue + 上下限）校验称量精度。
+
+4. **IExpand 约定**：
+   ```
+   process.set("lims.formulaCode", "F-AMX-v3");
+   process.set("lims.weighingOrderId", "WO-001");
+   ```
+

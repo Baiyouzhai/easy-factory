@@ -1,7 +1,7 @@
 package com.byz.factory.script;
 
-import com.byz.factory.model.IProcess;
-import com.byz.factory.model.IResourceModel;
+import com.byz.factory.process.IProcess;
+import com.byz.factory.resource.IResourceItem;
 
 import java.util.Map;
 
@@ -22,7 +22,7 @@ public interface ScriptContext {
     /**
      * 输入资源列表
      */
-    IResourceModel[] getInputResources();
+    IResourceItem[] getInputResources();
 
     /**
      * 白名单服务 — key 为服务名（如 "mes", "qms", "lims"），

@@ -93,3 +93,23 @@ MPS → APS:   MPS 作为 APS 的输入进行精细排程
 2. 粗产能检查的模型：仅看瓶颈设备还是所有资源？
 3. MPS 滚动周期多长？每周滚动还是每月冻结？
 4. 与 APS 的边界：MPS 出周计划，APS 排到小时——是否需要明确的数据契约？
+
+## AI 协作建议（2026-07-18）
+
+MPS 做粗产能计划——应直接使用 core 的产能分析工具。
+
+### 推荐实施
+
+1. **粗产能检查使用 FactoryCapacityProfile** — 在 `MpsService` 中：
+   ```java
+   FactoryCapacityProfile profile = new FactoryCapacityProfile(factoryCode, dailyHours);
+   profile.withMachine("PT-001", 960, 0.90);
+   // 年最大产出
+   BigDecimal annualMax = profile.getMaxTheoreticalAnnualOutput(new BigDecimal("1"));
+   // vs 计划量 → 判定
+   ```
+
+2. **提前期估算** — 使用 `ProductionLeadTime` 计算每个产品的总提前期，用于 MPS 的时间槽规划。
+
+3. **使用 ProductionPlanStatus 状态机** — core 已定义完整状态流转（DRAFT→APPROVED→RELEASED→IN_PROGRESS→COMPLETED→CLOSED）。
+

@@ -36,7 +36,7 @@ SourceGroup:
 
 ```
 Execute:
-├── Noting  — 空操作（占位/跳过）
+├── Nothing — 空操作（占位/跳过）
 ├── Create  — 创建新资源
 ├── Add     — 增加资源数量
 ├── Use     — 消耗资源

@@ -170,3 +170,38 @@ Equip → QMS:   设备参数数据 → SPC分析
 1. 设备配方与 LIMS 配方是什么关系？同一概念还是不同？
 2. OEE 的六大损失如何采集？手动录入还是 IoT 自动？
 3. 设备状态变更是否需要审批流程？
+
+## AI 协作建议（2026-07-18）
+
+EQUIP 是物理层设备管理的核心实现。core 已新增 `MachineStatus` 状态机和 `IEquipmentAction` 桥接路径。
+
+### 推荐实施顺序
+
+1. **升级设备状态机** — `Equipment.Status`（IDLE/RUNNING/MAINTENANCE/FAULT/OFFLINE）是普通枚举，无状态校验。应升级为使用 core 的 `MachineStatus`（实现 `ILifecycle.StatusEnum`），获得完整的状态转换校验：
+   ```
+   IDLE→RUNNING|SETUP|MAINTENANCE / RUNNING→IDLE|FAULT / FAULT→MAINTENANCE→IDLE
+   ```
+   可通过 `BaseLifecycleEntity<MachineStatus>` 获得 `transition()` 校验。
+
+2. **桥接 IEquipmentAction** — 实现类应覆盖 `execute()` 桥接：
+   ```java
+   @Override
+   public IResourcePack execute(IProcess process, IResourceItem... resources) {
+       IResourcePack result = IActionModel.super.execute(process, resources);
+       EquipmentActionResult eqResult = executeEquipment(result);
+       process.set("equip.lastResult", eqResult);  // 挂入动态属性
+       return result;
+   }
+   ```
+
+3. **对接匹配引擎** — `EquipmentBinding.supportedActionCodes` 是匹配的唯一依据。确保设备注册时正确声明支持的动作编码集合。`DirectEquipmentStrategy` 和 `LineFirstStrategy` 都依赖此声明。
+
+4. **OEE 计算接入** — core 的 `FactoryCapacityProfile` 已定义 OEE 模型（日可用时间 × OEE 系数）。EQUIP 的 `OEMetrics` 应向 `FactoryCapacityProfile` 提供实际数据。
+
+5. **IExpand 动态属性约定**：
+   ```
+   resource.set("equip.status", "RUNNING");
+   resource.set("equip.oee", "0.85");
+   resource.set("equip.nextMaintenanceDate", "2026-08-01");
+   ```
+

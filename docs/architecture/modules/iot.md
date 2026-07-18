@@ -183,3 +183,30 @@ IoT ← MES:    开工/停机指令 → 下发到设备
 1. 协议适配器：自研还是集成现有库（Eclipse Milo OPC UA / Modbus4J）？
 2. 时序数据库：InfluxDB vs TimescaleDB vs TDengine？
 3. 边缘计算：数据过滤和聚合放在设备侧还是服务器侧？
+
+## AI 协作建议（2026-07-18）
+
+IoT 负责设备数据采集——为其它模块提供实时数据源。
+
+### 推荐实施
+
+1. **桥接 IDataCollectionAction** — 实现类应覆盖 `execute()`，采集传感器数据后写入时序存储，将 `DataCollectionResult` 挂入事件 payload。
+
+2. **使用 TagFilter 提取 IoT 关注资源**：
+   ```java
+   var iotResources = TagFilter.of(action.requireResources())
+       .hasTagPrefix("iot.")
+       .list();
+   ```
+
+3. **工艺参数对照** — 采集的实际值 vs `IProcessParameter` 的 targetValue/上下限 → 判定是否触发报警。超出控制限 → 发布 `iot.alarm.triggered` 事件。
+
+4. **IExpand 约定**：
+   ```
+   resource.set("iot.tag", "TEMP_001");       // 采集标签
+   resource.set("iot.interval", "5000");       // 采集间隔 ms
+   resource.set("iot.protocol", "modbus");     // 通信协议
+   ```
+
+5. **报警联动** — 报警触发后，通过 `DomainEventPublisher` 通知 Andon（创建呼叫）和 MES（暂停工序）。
+

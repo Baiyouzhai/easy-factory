@@ -111,3 +111,19 @@ EAM → ERP:    设备折旧 → 财务成本归集
 2. 预防性维护的触发条件：按日历周期还是按运行小时数？
 3. 备件管理是否纳入 EAM 还是独立为 WMS（仓储管理）模块？
 4. 与财务系统的对接深度：折旧计算在 EAM 还是 ERP？
+
+## AI 协作建议（2026-07-18）
+
+EAM 管理资产的财务/管理视角——与 EQUIP（操作视角）互补。
+
+### 推荐实施
+
+1. **使用 AssetStatus 状态机** — core 已定义 `AssetStatus`（IDLE/IN_USE/UNDER_MAINTENANCE/SCRAPPED）实现 `ILifecycle.StatusEnum`。`Asset` 继承 `BaseLifecycleEntity<AssetStatus>` 即可获得状态转换校验。
+
+2. **与 MachineStatus 的关系** — EAM 的 `AssetStatus` 是财务/管理状态，EQUIP 的 `MachineStatus` 是操作状态。两者独立但可关联：
+   - Asset.IDLE ↔ Machine.IDLE
+   - Asset.IN_USE ↔ Machine.RUNNING
+   - Asset.UNDER_MAINTENANCE ↔ Machine.MAINTENANCE
+
+3. **审计追踪** — 资产状态变更（如报废）应通过 core 的 `AuditTrail` 记录。
+

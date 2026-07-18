@@ -132,3 +132,18 @@ WMS → ERP:    库存变更 → 财务过账
 2. 线边仓管理：线边仓库存是否独立于主仓库？盘点周期？
 3. 条码/RFID：出入库扫码实现？与 IoT 的关系？
 4. 库存事务是否实时回传 ERP？还是按批次汇总回传？
+
+## AI 协作建议（2026-07-18）
+
+WMS 管理仓储——与物料追溯和批次管理紧密集成。
+
+### 推荐实施
+
+1. **实现 IMaterial 接口** — core 已定义 `IMaterial`（固定 SourceGroup.Material）。仓储管理的物料应实现此接口，获得 `IResourceItem` 的数量管理能力。
+
+2. **批次谱系集成** — 出入库操作关联 `IBatch`。使用 `IBatch.getParentBatchNos()`/`getChildBatchNos()` 追踪批次拆分/合并。
+
+3. **使用 UOM 枚举** — core 已定义 `UOM`（KG/G/L/PCS/TAB 等）。所有物料数量应附带 `getUom()` 声明单位。
+
+4. **使用 ReceiptStatus 状态机** — core 已定义（PENDING→PARTIAL→COMPLETED→CLOSED）。
+

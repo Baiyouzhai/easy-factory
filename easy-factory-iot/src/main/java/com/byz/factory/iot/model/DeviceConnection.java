@@ -1,33 +1,31 @@
 package com.byz.factory.iot.model;
 
-import com.byz.data.DataExpand;
+import com.byz.factory.shared.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.time.Instant;
 
 /**
- * IoT 设备连接 — 管理设备通信协议和连接状态。
+ * IoT 设备连接 — 继承 BaseEntity 获得 code/name/audit。
  *
  * @author 苏政
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
-public class DeviceConnection extends DataExpand {
+public class DeviceConnection extends BaseEntity {
 
-    private String equipmentCode;
-    private String protocol;            // OPC_UA / MODBUS_TCP / MQTT / S7
+    private String protocol;
     private String endpoint;
     private int pollIntervalMs;
-    private String status;              // ONLINE / OFFLINE / ERROR
     private Instant lastConnected;
 
     public DeviceConnection(String equipmentCode, String protocol, String endpoint) {
-        this.equipmentCode = equipmentCode;
+        super(equipmentCode, "连接-" + equipmentCode);
         this.protocol = protocol;
         this.endpoint = endpoint;
         this.pollIntervalMs = 1000;
-        this.status = "OFFLINE";
+        this.lastConnected = Instant.now();
     }
 
 }

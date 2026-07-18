@@ -106,3 +106,25 @@ Andon → QMS:    质量问题 → 创建偏差
 2. 上报规则存储为静态配置还是动态脚本？（类似 Action 脚本化）
 3. Andon 是否需要独立模块，还是作为 MES 的子系统？
 4. 产线物理 Andon 看板（LED屏幕）如何对接？
+
+## AI 协作建议（2026-07-18）
+
+Andon 是异常响应中枢——接收多源事件并触发升级流程。
+
+### 推荐实施
+
+1. **使用 AndonStatus 状态机** — core 已定义完整流转（OPEN→ACKNOWLEDGED→RESOLVED/ESCALATED→CLOSED）。
+
+2. **多源事件订阅** — Andon 应订阅来自多模块的领域事件：
+   ```java
+   DomainEventPublisher.subscribe("mes.process.timeout", this::createCall);
+   DomainEventPublisher.subscribe("qms.spc.outOfControl", this::createCall);
+   DomainEventPublisher.subscribe("equip.fault", this::createCall);
+   DomainEventPublisher.subscribe("iot.alarm.triggered", this::createCall);
+   ```
+
+3. **升级至其它模块** — Andon 处理后通过事件通知下游：
+   - ESCALATED → `eam.maintenance.requested`（创建维护工单）
+   - EMERGENCY → `mes.process.pause`（暂停工单）
+   - 质量问题 → `qms.deviation.created`（创建偏差）
+

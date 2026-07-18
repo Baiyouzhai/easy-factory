@@ -1,26 +1,32 @@
 package com.byz.factory.dms.model;
 
-import com.byz.data.DataExpand;
+import com.byz.factory.batch.DocumentStatus;
+import com.byz.factory.shared.BaseLifecycleEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+
 import java.time.LocalDate;
 
+/**
+ * 文档 — 继承 BaseLifecycleEntity 获得状态机（DRAFT→UNDER_REVIEW→APPROVED/REJECTED→OBSOLETE）。
+ *
+ * @author 苏政
+ */
 @Data
 @EqualsAndHashCode(callSuper = true)
-public class Document extends DataExpand {
-    private String code;
+public class Document extends BaseLifecycleEntity<DocumentStatus> {
+
     private String title;
-    private String category;         // SOP/BATCH_RECORD/INSPECTION/DEVIATION/CAPA/VALIDATION/CALIBRATION
-    private String version;
-    private String status;           // DRAFT/UNDER_REVIEW/APPROVED/EFFECTIVE/OBSOLETED
+    private String category;
     private String author;
     private LocalDate effectiveDate;
     private int reviewCycleMonths;
     private LocalDate nextReviewDate;
-    private String content;          // 文档内容或附件ID
+    private String content;
 
     public Document(String code, String title, String category) {
-        this.code = code; this.title = title; this.category = category;
-        this.version = "1.0"; this.status = "DRAFT";
+        super(code, title, DocumentStatus.DRAFT);
+        this.title = title;
+        this.category = category;
     }
 }

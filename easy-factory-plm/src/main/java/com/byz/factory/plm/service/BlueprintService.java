@@ -1,6 +1,6 @@
 package com.byz.factory.plm.service;
 
-import com.byz.factory.design.IBlueprint;
+import com.byz.factory.factory.IBlueprint;
 import com.byz.factory.plm.model.ProcessTemplate;
 
 /**

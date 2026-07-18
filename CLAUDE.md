@@ -125,7 +125,7 @@ function execute(context) {
 
 ### 5. 动作语义
 
-`Dict.Execute`: `Noting | Create | Add | Use | Change | Convert | Split | Combine | Transfer | Hold`
+`Dict.Execute`: `Nothing | Create | Add | Use | Change | Convert | Split | Combine | Transfer | Hold`
 
 ### 6. 质量内嵌
 

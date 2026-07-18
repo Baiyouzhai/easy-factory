@@ -78,3 +78,25 @@ DMS ← EAM:   校准证书 → 归档
 2. 电子签名合规：21 CFR Part 11（美国）/ 欧盟 Annex 11 的电子签名要求如何满足？
 3. AuditTrail 的实现方式：AOP 切面自动记录 vs 各模块手动调用？
 4. 文档模板：SOP/批记录是否需要在 easy-factory 内做模板引擎？
+
+## AI 协作建议（2026-07-18）
+
+DMS 是 GMP 合规的关键模块。core 已提供完整的审计追踪和电子签名基础设施。
+
+### 推荐实施顺序
+
+1. **使用 core 的 AuditTrail** — core 已定义 `AuditTrail` record（entityType, entityId, action, operator, timestamp, before, after, reason）。DMS 不应重新定义审计模型，应直接使用此 record 并通过 `DomainEventPublisher` 发布审计事件。
+
+2. **使用 core 的电子签名** — `IElectronicSignature` + `SignatureMeaning`（REVIEWED/APPROVED/VERIFIED）。DMS 的审批工作流（DocumentStatus: DRAFT→UNDER_REVIEW→APPROVED/REJECTED→OBSOLETE）的每个状态转换应生成一个 `IElectronicSignature` 记录。
+
+3. **回答待决策问题2（电子签名合规）**：
+   - 签名绑定：`IElectronicSignature` 的 `getSignerId()` + `getTimestamp()` + `getReason()` 满足 21 CFR Part 11 的"签名+含义+时间"三要素
+   - 审计追踪：每次签名的创建/修改/删除由 `AuditTrail` 自动记录
+   - 不可否认性：签名的 record 应不可变（record 类型天然不可变）
+
+4. **回答待决策问题3（AuditTrail 实现方式）**：
+   - 推荐 **AOP 切面自动记录** 用于通用实体变更（CREATE/UPDATE/DELETE）
+   - **手动调用** 用于业务语义事件（APPROVE/REJECT/OBSOLETE）——此时 before/after JSON 包含业务上下文
+
+5. **桥接 IComplianceAction** — 实现 `IComplianceAction`，在 `execute()` 中集成清场检查+双人复核+电子签名，将 `ComplianceActionResult` 写入 AuditTrail。
+

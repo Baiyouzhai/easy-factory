@@ -169,3 +169,21 @@ ERP ← LIMS:  批次消耗明细
 1. 对接哪个 ERP？SAP/Oracle/用友/金蝶？
 2. 同步方式：定时轮询还是 ERP 主动推送？
 3. 回传失败的重试策略？最大重试次数和退避算法？
+
+## AI 协作建议（2026-07-18）
+
+ERP 是外部系统适配层——核心关注数据同步的可靠性和一致性。
+
+### 推荐实施
+
+1. **使用 IResourceItem 管理物料** — core 的 `IResourceItem`（getNumber/getUom/add/use/copy）为物料主数据提供统一模型。`MaterialCache` 将 ERP 物料映射为 `IResourceItem`。
+
+2. **使用 UOM 枚举** — core 已定义标准计量单位。ERP 同步时应做单位映射（ERP 的单位编码 → core 的 `UOM` 枚举）。
+
+3. **事件驱动同步** — 库存变更通过 `DomainEventPublisher` 广播，而非直接调用 ERP API：
+   ```java
+   // WMS 收货完成 → 发布事件
+   DomainEventPublisher.publish(IDomainEvent.of("wms.receipt.completed", ...));
+   // ERP 适配器订阅 → 异步回传
+   ```
+

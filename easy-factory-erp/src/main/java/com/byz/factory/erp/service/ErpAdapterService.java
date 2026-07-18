@@ -1,7 +1,7 @@
 package com.byz.factory.erp.service;
 
 import com.byz.factory.erp.model.MaterialCache;
-import com.byz.factory.model.IResourceModel;
+import com.byz.factory.resource.IResourceItem;
 
 import java.math.BigDecimal;
 

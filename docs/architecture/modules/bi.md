@@ -114,3 +114,25 @@ GET    /api/bi/reports/batch/{batchNo}    批次追溯报告
 2. 实时推送：WebSocket 还是 SSE？KPI 刷新频率？
 3. 报表引擎：内置 SQL 视图还是接入 BI 工具（Grafana/Superset）？
 4. 移动端：是否需要移动端看板（车间主任用手机看进度）？
+
+## AI 协作建议（2026-07-18）
+
+BI 是数据消费层——聚合各模块数据生成 KPI 和看板。
+
+### 推荐实施
+
+1. **KPI 数据源映射到 core 计算器**:
+   | KPI | 使用 core 工具 |
+   |-----|---------------|
+   | 计划完成率 | MES 工单完成数 / MPS 计划数 |
+   | 批次收率 | `IBatch.getYieldPercent()` |
+   | 生产提前期 | `ProductionLeadTime.calculate()` → 计划 vs 实际对比 |
+   | 产能利用率 | `BottleneckDetector.detect()` + `FactoryCapacityProfile` |
+
+2. **IReportable 集成** — core 的 `OperationResult` 已实现 `IReportable.toReport()`。BI 的报表生成可复用此接口。
+
+3. **事件驱动更新** — KPI 不轮询计算，而是订阅领域事件增量更新：
+   - `mes.batch.completed` → 更新日产量/收率
+   - `qms.inspection.passed` → 更新一次合格率
+   - `equip.status.changed` → 更新 OEE 可用率
+

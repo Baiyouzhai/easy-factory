@@ -129,3 +129,40 @@ APS → Equip: 设备占用时间段
 2. 重排程触发条件：新订单插入？设备故障？物料延迟？多长时间自动重排一次？
 3. 软约束 vs 硬约束：交期延误算软约束（可违反但有惩罚）还是硬约束（必须满足）？
 4. 与 MES 的双向反馈：MES 上报实际工时的延迟如何反馈到 APS 以校正后续排程？
+
+## AI 协作建议（2026-07-18）
+
+APS 应直接使用 core 的 operation 分析引擎，而不是重复实现计算逻辑。
+
+### 集成操作分析层
+
+core 已提供 4 个计算器，APS 的排程逻辑应直接调用：
+
+1. **产能检查** — `FactoryCapacityProfile` + `BottleneckDetector`
+   ```java
+   FactoryCapacityProfile profile = new FactoryCapacityProfile(factoryCode, dailyHours);
+   profile.withMachine("PT-001", 960, 0.90);  // 16h×60min, OEE 90%
+   BottleneckResult bn = new BottleneckDetector().detect(blueprint, durations, profile);
+   // → 约束工序 + 最大日产能 → 用于排程的产能约束
+   ```
+
+2. **提前期计算** — `ProductionLeadTime`
+   ```java
+   ProductionLeadTime calc = new ProductionLeadTime(queueTime, transferTime);
+   LeadTimeResult lt = calc.calculate(blueprint, durations, batchSize);
+   // → 每道工序的周期/排队/转运时间 → 用于排程的时间估算
+   ```
+
+3. **资源需求** — `ResourceRequirementExploder`
+   ```java
+   new ResourceRequirementExploder()
+       .withYield("P002", new BigDecimal("0.97"))
+       .explode(blueprint, batchSize);
+   ```
+
+4. **匹配验证** — `ProcessRouteMatcher`
+   - 排程结果中每道工序是否能找到可用设备？
+
+### 排程算法建议（回答问题1）
+先实现**规则式排程**（EDD/SPT/CR），直接调用上述 core 计算器获取参数。优化引擎（遗传算法/约束规划）可以后续叠加——因为计算器接口不变。
+

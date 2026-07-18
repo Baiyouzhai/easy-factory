@@ -1,9 +1,8 @@
 package com.byz.factory.script;
 
-import com.byz.factory.data.Dict;
-import com.byz.factory.exception.ActionException;
-import com.byz.factory.model.IProcess;
-import com.byz.factory.model.IResourceModel;
+import com.byz.factory.process.IProcess;
+import com.byz.factory.resource.IResourceItem;
+import com.byz.factory.shared.Dict;
 
 import java.math.BigDecimal;
 import java.util.*;
@@ -46,14 +45,9 @@ public class GraalScriptEngine implements IScriptEngine {
         // 2. 编译（TODO: 需要 GraalVM JS 依赖）
         // Context ctx = createSandbox();
         // Value compiled = ctx.eval("js", source);
-        // GraalCompiledScript result = new GraalCompiledScript(scriptId, System.currentTimeMillis(), compiled);
-        // 暂时用源码直接执行模式
         GraalCompiledScript result = new GraalCompiledScript(scriptId, System.currentTimeMillis(), source);
 
-        // 3. 注入沙箱上下文
-        // bindUnitApi(result.getContext());
-
-        // 4. 注册
+        // 3. 注册
         registry.register(scriptId, metadata, result);
         metadata.setStatus("ACTIVE");
 
@@ -67,18 +61,6 @@ public class GraalScriptEngine implements IScriptEngine {
         }
 
         // TODO: 在沙箱中执行
-        // try (Context ctx = createSandbox()) {
-        //     bindContext(ctx, context);
-        //     Value result = ctx.eval("js", graal.getSource());
-        //     if (result.canExecute()) {
-        //         return result.execute(context.getProcess(), context.getInputResources());
-        //     }
-        //     return result.as(Object.class);
-        // } catch (Exception e) {
-        //     throw new ActionException("脚本执行失败", e);
-        // }
-
-        // 占位：返回上下文中的结果
         Object result = context.getResult();
         if (result != null) return result;
 
@@ -93,7 +75,6 @@ public class GraalScriptEngine implements IScriptEngine {
         try {
             return execute(compiled, context);
         } finally {
-            // 临时脚本不保留
             registry.deprecate(tempId);
         }
     }
@@ -108,26 +89,17 @@ public class GraalScriptEngine implements IScriptEngine {
         return true;
     }
 
+    @Override
+    public ScriptContext createContext(IProcess process, IResourceItem... inputResources) {
+        return new DefaultScriptContext(process, inputResources);
+    }
+
     // ---- 沙箱配置 ----
 
     /**
      * 创建沙箱 Context（TODO: GraalVM SDK 可用时实现）
      */
     static Object createSandbox() {
-        // return Context.newBuilder("js")
-        //     // 禁止项
-        //     .allowHostClassLookup(className -> false)
-        //     .allowIO(false)
-        //     .allowCreateThread(false)
-        //     .allowNativeAccess(false)
-        //     .allowCreateProcess(false)
-        //     .allowExperimentalOptions(false)
-        //     // 资源限制
-        //     .option("js.ecmascript-version", "latest")
-        //     .option("engine.MaxIsolateMemory", "64MB")
-        //     .option("engine.MaxCpuTime", "30000")  // 30秒CPU时间
-        //     .sandbox(SandboxPolicy.TRUSTED)
-        //     .build();
         return null; // 占位
     }
 
@@ -140,19 +112,17 @@ public class GraalScriptEngine implements IScriptEngine {
     }
 
     /**
-     * 创建白名单 API 表面 — 只暴露安全的方法，不暴露底层实现
+     * 创建白名单 API 表面
      */
     static Map<String, Object> createApiSurface(ScriptContext scriptCtx) {
         Map<String, Object> api = new LinkedHashMap<>();
 
-        // 工序信息（只读）
         IProcess p = scriptCtx.getProcess();
         api.put("processCode", p.getCode());
         api.put("processName", p.getName());
 
-        // 输入资源（只读快照）
         List<Map<String, Object>> inputs = new ArrayList<>();
-        for (IResourceModel r : scriptCtx.getInputResources()) {
+        for (IResourceItem r : scriptCtx.getInputResources()) {
             Map<String, Object> ri = new LinkedHashMap<>();
             ri.put("name", r.getName());
             ri.put("group", r.getGroup().name());
@@ -162,12 +132,10 @@ public class GraalScriptEngine implements IScriptEngine {
         }
         api.put("inputResources", Collections.unmodifiableList(inputs));
 
-        // 授权服务（白名单暴露）
         if (scriptCtx.getServices() != null) {
             api.put("services", scriptCtx.getServices());
         }
 
-        // 创建资源的工厂方法
         api.put("createResource", (ResourceFactory) (name, group, type, number) -> {
             Map<String, Object> r = new LinkedHashMap<>();
             r.put("name", name);
@@ -177,7 +145,6 @@ public class GraalScriptEngine implements IScriptEngine {
             return r;
         });
 
-        // 日志
         api.put("log", (ScriptLogger) (level, msg) -> scriptCtx.log(level, msg));
 
         return Collections.unmodifiableMap(api);

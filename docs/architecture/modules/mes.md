@@ -169,3 +169,42 @@ MES → LIMS:  请求配方、提交批记录
 2. 报工粒度：工序级还是动作级？
 3. 并行工序如何建模（同时进行的称量和配料）？
 4. QMS 检验触发时 MES 工序暂停/恢复的机制？
+
+## AI 协作建议（2026-07-18）
+
+MES 是执行追溯域的核心实现模块。以下为建议优先处理的事项：
+
+### 推荐实施顺序
+
+1. **实现 IBatch + ITraceable** — core 已定义完整接口。Batch 应继承 `BaseLifecycleEntity<BatchStatus>`，覆盖 `getCurrentProcessCode()`/`getCurrentWorkstationCode()`（WIP 位置追踪）和 `getParentBatchNos()`/`getChildBatchNos()`（物料谱系）。TraceRecord 应实现 `ITraceable`，记录 before/after 资源快照（JSON）。
+
+2. **完善 MesWorkOrder** — 当前已继承 `BaseLifecycleEntity<WorkOrderStatus>` 并实现 `IWorkOrder`，但缺少：
+   - `formulaCode` 字段（记录使用的配方版本——追溯合规关键）
+   - 工单发布时冻结 Blueprint 快照（防止蓝图后续变更影响已发布工单）
+
+3. **集成操作分析层** — 在 `WorkOrderService` 中调用 core 的分析引擎：
+   ```java
+   // 工单发布前验证可制造性
+   ProcessRouteMatcher matcher = new ProcessRouteMatcher();
+   RouteMatchResult result = matcher.match(blueprint, factory);
+   if (!result.feasible()) throw new ActionException("工厂不可生产");
+   ```
+
+4. **接入领域事件** — MES 是事件的主要生产者：
+   - 工单发布 → `mes.workorder.released`
+   - 工序开始 → `mes.process.started`（QMS 订阅以自动创建检验）
+   - 工序完成 → `mes.process.completed`
+   - 批次完成 → `mes.batch.completed`
+
+5. **IExpand 动态属性约定**：
+   ```
+   process.set("mes.workOrderId", woNo);
+   process.set("mes.batchNo", batchNo);
+   process.set("mes.formulaCode", formulaCode);
+   ```
+
+### 待决策问题的新建议
+- 问题1（副本 vs 解析）：推荐**运行时解析 + 冻结快照**——工单发布时把当前 Blueprint 版本号写入工单，运行时按版本号查找
+- 问题2（报工粒度）：推荐**动作级**——与 ITraceable 的 before/after 快照粒度一致
+- 问题3（并行工序）：使用 `ExecutionMode.PARALLEL` 标记，ProcessCycleTime 已支持
+

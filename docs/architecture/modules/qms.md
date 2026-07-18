@@ -195,3 +195,34 @@ QMS ← LIMS:  实验室检测结果
 2. 质量门禁的判定脚本由谁编写？工艺工程师还是质量工程师？
 3. 偏差处理流程：MES 自动暂停 → QMS 偏差 → CAPA → 通知 MES 恢复？还是人工介入？
 4. SPC 控制限如何设定？固定值还是基于历史数据自动计算？
+
+## AI 协作建议（2026-07-18）
+
+QMS 是质量内嵌设计的关键实现。core 已提供审计追踪和电子签名基础设施。
+
+### 推荐实施顺序
+
+1. **接入审计追踪** — 所有 QMS 实体（检验记录、偏差、CAPA）的操作应自动记录 `AuditTrail`（core 已定义 record：entityType, entityId, action, operator, timestamp, before, after, reason）。
+
+2. **接入电子签名** — 检验报告审核、偏差批准、CAPA 关闭等操作使用 `IElectronicSignature` + `SignatureMeaning`（REVIEWED/APPROVED/VERIFIED）。
+
+3. **桥接 IQualityAction** — 实现 `IQualityAction` 的类应覆盖 `execute()` 方法，先调用标准动作逻辑，再执行质量专用逻辑（取样→检测→判定），将 `QualityActionResult` 挂入事件 payload。
+
+4. **订阅 MES 事件** — 在 `InspectionService` 中订阅 `mes.process.started`，自动创建检验指令：
+   ```java
+   DomainEventPublisher.subscribe("mes.process.started", event -> {
+       if (hasInspectionPlan(event.getPayload().get("processCode"))) {
+           createInspectionOrder(event);
+       }
+   });
+   ```
+
+5. **工艺参数集成** — QMS 的检验标准（USL/LSL/目标值）应与 core 的 `IProcessParameter` 对齐。检验时：`IProcessParameter.getTargetValue()` vs 实际测量值 → 判定。
+
+6. **IExpand 动态属性约定**：
+   ```
+   process.set("qms.inspectionLevel", "NORMAL");
+   process.set("qms.aql", "0.65");
+   process.set("qms.method", "HPLC");
+   ```
+
