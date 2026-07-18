@@ -1,23 +1,23 @@
 package com.byz.factory.script;
 
-import org.graalvm.polyglot.Context;
+import javax.script.CompiledScript;
 
 /**
- * GraalJS 编译产物 — 封装 GraalVM 沙箱 Context（脚本已加载到其中）。
+ * Nashorn 编译产物 — 封装 JSR-223 CompiledScript。
  *
  * @author 苏政
  */
-public class GraalCompiledScript implements CompiledScript {
+public class NashornCompiledScript implements com.byz.factory.script.CompiledScript {
 
     private final String scriptId;
     private final long compiledAt;
-    private final Context context;
+    private final CompiledScript compiled;
     private boolean valid;
 
-    public GraalCompiledScript(String scriptId, long compiledAt, Context context) {
+    public NashornCompiledScript(String scriptId, long compiledAt, CompiledScript compiled) {
         this.scriptId = scriptId;
         this.compiledAt = compiledAt;
-        this.context = context;
+        this.compiled = compiled;
         this.valid = true;
     }
 
@@ -40,8 +40,8 @@ public class GraalCompiledScript implements CompiledScript {
         this.valid = false;
     }
 
-    public Context getContext() {
-        return context;
+    public CompiledScript getCompiled() {
+        return compiled;
     }
 
 }

@@ -19,6 +19,7 @@
     <spring-boot.version>3.4.5</spring-boot.version>
 
     <!-- Script Engine -->
+    <graalvm-js.version>24.1.0</graalvm-js.version>
     <nashorn.version>15.4</nashorn.version>
 
     <!-- Utilities -->

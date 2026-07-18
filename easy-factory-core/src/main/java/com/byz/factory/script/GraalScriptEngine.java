@@ -2,26 +2,30 @@ package com.byz.factory.script;
 
 import com.byz.factory.process.IProcess;
 import com.byz.factory.resource.IResourceItem;
+import com.byz.factory.resource.IResourcePack;
+import com.byz.factory.resource.ResourceItem;
+import com.byz.factory.resource.ResourcePack;
 import com.byz.factory.shared.Dict;
+
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.Value;
 
 import java.math.BigDecimal;
 import java.util.*;
 
 /**
- * GraalJS 脚本引擎实现 — 使用 GraalVM JavaScript 引擎，内置沙箱限制。
+ * GraalJS 脚本引擎实现 — 使用 GraalVM polyglot API，内置沙箱限制。
  * <p>
  * 安全策略（默认全部禁止，只开放白名单）：
  * <ul>
- *   <li>❌ 禁止访问任何 Java 类 (HostClassLookup)</li>
- *   <li>❌ 禁止文件/网络 IO</li>
- *   <li>❌ 禁止创建线程</li>
- *   <li>❌ 禁止创建进程</li>
- *   <li>❌ 禁止 JNI 本地访问</li>
- *   <li>✅ 仅能访问 ScriptContext 中显式绑定的 API 表面对象</li>
+ *   <li>禁止访问任何 Java 类 (HostAccess.NONE)</li>
+ *   <li>禁止文件/网络 IO</li>
+ *   <li>禁止创建线程</li>
+ *   <li>禁止创建进程</li>
+ *   <li>禁止 JNI 本地访问</li>
+ *   <li>仅能访问 ScriptContext 中显式绑定的 API 表面对象</li>
  * </ul>
- *
- * <p>注意：当前为骨架实现，需要 GraalVM SDK 依赖。
- * 在添加 {@code org.graalvm.js:js} 依赖前，编译时部分方法为 TODO。
  *
  * @author 苏政
  */
@@ -42,10 +46,10 @@ public class GraalScriptEngine implements IScriptEngine {
                 "脚本ID不匹配: 期望 " + scriptId + ", 实际 " + metadata.getId());
         }
 
-        // 2. 编译（TODO: 需要 GraalVM JS 依赖）
-        // Context ctx = createSandbox();
-        // Value compiled = ctx.eval("js", source);
-        GraalCompiledScript result = new GraalCompiledScript(scriptId, System.currentTimeMillis(), source);
+        // 2. 在沙箱中创建 Context 并加载脚本
+        Context ctx = createSandbox();
+        ctx.eval("js", source);
+        GraalCompiledScript result = new GraalCompiledScript(scriptId, System.currentTimeMillis(), ctx);
 
         // 3. 注册
         registry.register(scriptId, metadata, result);
@@ -60,22 +64,42 @@ public class GraalScriptEngine implements IScriptEngine {
             throw new IllegalArgumentException("不支持的编译产物类型: " + compiled.getClass());
         }
 
-        // TODO: 在沙箱中执行
-        Object result = context.getResult();
-        if (result != null) return result;
+        Context ctx = graal.getContext();
+        Value bindings = ctx.getBindings("js");
+        Value executeFn = bindings.getMember("execute");
 
-        // 默认返回工序资源包
-        return context.getProcess().getResourcePack();
+        if (executeFn == null || !executeFn.canExecute()) {
+            throw new RuntimeException(
+                "脚本 [" + graal.getScriptId() + "] 未定义可调用的 execute(context) 函数");
+        }
+
+        // 构造白名单 API 表面并传入
+        Map<String, Object> apiSurface = createApiSurface(context);
+        try {
+            Value result = executeFn.execute(apiSurface);
+            if (result == null || result.isNull()) {
+                return context.getProcess().getResourcePack();
+            }
+            if (result.hasMembers()) {
+                return rawMapToResourcePack(result, context.getProcess());
+            }
+            return result.as(Object.class);
+        } catch (Exception e) {
+            throw new RuntimeException(
+                "脚本执行失败: " + graal.getScriptId() + " — " + e.getMessage(), e);
+        }
     }
 
     @Override
     public Object eval(String source, ScriptContext context) {
-        String tempId = "eval-" + UUID.randomUUID().toString().substring(0, 8);
-        CompiledScript compiled = compile(tempId, source);
+        // 先用脚本自身的 @id 编译，避免临时ID与元数据ID不匹配
+        ScriptMetadata metadata = ScriptMetadata.parse(source);
+        String scriptId = metadata.getId();
+        CompiledScript compiled = compile(scriptId, source);
         try {
             return execute(compiled, context);
         } finally {
-            registry.deprecate(tempId);
+            registry.deprecate(scriptId);
         }
     }
 
@@ -97,22 +121,21 @@ public class GraalScriptEngine implements IScriptEngine {
     // ---- 沙箱配置 ----
 
     /**
-     * 创建沙箱 Context（TODO: GraalVM SDK 可用时实现）
+     * 创建沙箱 Context — 默认全部禁止。
      */
-    static Object createSandbox() {
-        return null; // 占位
+    @SuppressWarnings("deprecation")
+    static Context createSandbox() {
+        return Context.newBuilder("js")
+            .allowHostAccess(HostAccess.NONE)
+            .allowIO(false)
+            .allowCreateThread(false)
+            .allowNativeAccess(false)
+            .allowExperimentalOptions(false)
+            .build();
     }
 
     /**
-     * 绑定授权 API 到脚本上下文
-     */
-    static void bindContext(Object ctx, ScriptContext scriptCtx) {
-        // Bindings bindings = ctx.getBindings("js");
-        // bindings.putMember("context", createApiSurface(scriptCtx));
-    }
-
-    /**
-     * 创建白名单 API 表面
+     * 创建白名单 API 表面 — 脚本只能通过此对象访问系统。
      */
     static Map<String, Object> createApiSurface(ScriptContext scriptCtx) {
         Map<String, Object> api = new LinkedHashMap<>();
@@ -148,6 +171,52 @@ public class GraalScriptEngine implements IScriptEngine {
         api.put("log", (ScriptLogger) (level, msg) -> scriptCtx.log(level, msg));
 
         return Collections.unmodifiableMap(api);
+    }
+
+    /**
+     * 将脚本返回的 Map 结构转换为 IResourcePack。
+     */
+    private static IResourcePack rawMapToResourcePack(Value value, IProcess process) {
+        ResourcePack pack = new ResourcePack();
+        try {
+            if (value.hasMember("resources")) {
+                Value resources = value.getMember("resources");
+                if (resources.hasArrayElements()) {
+                    for (long i = 0; i < resources.getArraySize(); i++) {
+                        pack.merge(toResourceItem(resources.getArrayElement(i)));
+                    }
+                }
+            } else {
+                pack.merge(toResourceItem(value));
+            }
+            return pack;
+        } catch (Exception e) {
+            return process.getResourcePack();
+        }
+    }
+
+    private static IResourceItem toResourceItem(Value r) {
+        String name = r.hasMember("name") ? r.getMember("name").asString() : "unknown";
+        String groupStr = r.hasMember("group") ? r.getMember("group").asString() : "Material";
+        String typeStr = r.hasMember("type") ? r.getMember("type").asString() : "Other";
+        BigDecimal number = r.hasMember("number")
+            ? new BigDecimal(r.getMember("number").asString())
+            : BigDecimal.ONE;
+
+        Dict.SourceGroup group;
+        Dict.SourceType type;
+        try {
+            group = Dict.SourceGroup.valueOf(groupStr);
+        } catch (IllegalArgumentException e) {
+            group = Dict.SourceGroup.Material;
+        }
+        try {
+            type = Dict.SourceType.valueOf(typeStr);
+        } catch (IllegalArgumentException e) {
+            type = Dict.SourceType.Other;
+        }
+
+        return new ResourceItem(name, group, type, number);
     }
 
     // ---- 函数式接口 ----

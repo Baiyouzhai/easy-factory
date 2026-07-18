@@ -30,36 +30,25 @@
             <artifactId>hutool-core</artifactId>
         </dependency>
 
-        <!-- Nashorn 脚本引擎（过渡引擎，JDK15+需独立包） -->
+        <!-- GraalVM JavaScript 引擎（沙箱执行） -->
+        <dependency>
+            <groupId>org.graalvm.polyglot</groupId>
+            <artifactId>polyglot</artifactId>
+            <version>${graalvm-js.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.graalvm.polyglot</groupId>
+            <artifactId>js</artifactId>
+            <version>${graalvm-js.version}</version>
+            <type>pom</type>
+        </dependency>
+
+        <!-- Nashorn 脚本引擎（JDK 15+ 独立包，过渡引擎） -->
         <dependency>
             <groupId>org.openjdk.nashorn</groupId>
             <artifactId>nashorn-core</artifactId>
             <version>${nashorn.version}</version>
         </dependency>
-
-        <!-- GraalVM JS 引擎（计划备选引擎，待启用） -->
-        <!--
-        <dependency>
-            <groupId>org.graalvm.js</groupId>
-            <artifactId>js</artifactId>
-            <version>24.1.0</version>
-        </dependency>
-        <dependency>
-            <groupId>org.graalvm.js</groupId>
-            <artifactId>js-scriptengine</artifactId>
-            <version>24.1.0</version>
-        </dependency>
-        -->
-
-        <!-- J2V8 — V8 JavaScript 引擎 Java 绑定（待启用） -->
-        <!--
-        <dependency>
-            <groupId>com.eclipsesource.j2v8</groupId>
-            <artifactId>j2v8</artifactId>
-            <version>6.3.4</version>
-            <scope>compile</scope>
-        </dependency>
-        -->
 
         <dependency>
             <groupId>org.projectlombok</groupId>

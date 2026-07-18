@@ -159,10 +159,14 @@ ERP ← LIMS:  批次消耗明细
 ## 遗留问题
 
 ### 当前实现
-- [x] `MaterialCache` — 物料主数据本地缓存
-- [x] `ErpAdapterService` — ERP 适配接口已定义
+- [x] `MaterialCache` — 物料主数据本地缓存，含 `toResourceItem()` 映射、`mapUom()` 单位映射
+- [x] `ErpAdapterService` — ERP 适配接口已扩展（库存查询、事务队列管理、同步方法）
+- [x] `InventorySnapshot` — 库存快照模型，按物料+工厂+库位+批次记录
+- [x] `Transaction` — 事务回传记录，带 `TransactionStatus` 状态机（PENDING→SENT→CONFIRMED / FAILED→PENDING）
+- [x] `TransactionStatus` / `TransactionType` / `ErpMaterialType` — 枚举定义完整
+- [x] 单元测试 — MaterialCache + InventorySnapshot + Transaction 共 13 个测试，覆盖构造/状态转换/映射
 - [ ] 库存查询 — 未与任何 ERP 系统对接
-- [ ] 事务回传队列 — 未实现
+- [ ] 事务回传队列持久化 — 未实现（当前仅模型定义）
 - [ ] 同步策略（全量/增量）— 未定义
 
 ### 待决策

@@ -31,7 +31,9 @@ public class ScriptRegistry {
             history.computeIfAbsent(id, k -> new ArrayList<>()).add(existing);
         }
         metadataMap.put(id, metadata);
-        compiledMap.put(id, compiled);
+        if (compiled != null) {
+            compiledMap.put(id, compiled);
+        }
     }
 
     /**

@@ -49,7 +49,7 @@
 | `plm` | 约定已建立 | ProcessTemplate, Blueprint, ProcessParameter | BlueprintService |
 | `equip` | 约定已建立 | Equipment(IMachine + ILifecycle&lt;MachineStatus&gt;) | EquipmentService |
 | `lims` | 骨架 | Formula | FormulaService |
-| `erp` | 骨架 | MaterialCache | ErpAdapterService |
+| `erp` | 约定已建立 | MaterialCache, InventorySnapshot, Transaction(TransactionStatus) | ErpAdapterService |
 | `iot` | 骨架 | DeviceConnection | IotGatewayService |
 | `eam` | 约定已建立 | Asset, MaintenanceOrder, CalibrationRecord | EamService |
 | `mps` | 骨架 | ProductionPlan | MpsService |
@@ -194,10 +194,51 @@
 
 ---
 
+## ERP 模块约定（2026-07-18 建立）
+
+### 设计定位
+
+ERP 模块是**外部系统的适配层**，不是领域模型层。其他模块通过 `IResourceItem`/`IMaterial` 使用物料数据，通过 `ErpAdapterService` 调用库存/回传操作。
+
+### Core 层新增（供跨模块引用）
+
+| 类型 | 文件 | 说明 |
+|------|------|------|
+| 接口 | `batch/IErpTransaction.java` | 事务回传记录抽象，供 MES/WMS/LIMS 创建事务时编译期引用 |
+| 状态枚举 | `batch/TransactionStatus.java` | PENDING→SENT→CONFIRMED / SENT→FAILED→PENDING / PENDING→CANCELLED；实现 `ILifecycle.StatusEnum` |
+| 值枚举 | `batch/TransactionType.java` | GOODS_ISSUE / GOODS_RECEIPT / TRANSFER |
+
+### ERP 枚举（非跨模块，留在 erp）
+
+| 文件 | 位置 | 说明 |
+|------|------|------|
+| `ErpMaterialType.java` | erp/model | ERP 物料类型：ROH / HALB / FERT（SAP 特有概念，映射到 core `Dict.SourceType`） |
+
+### ERP 模型
+
+| 文件 | 继承 | 实现 | 说明 |
+|------|------|------|------|
+| `model/MaterialCache.java` | `BaseEntity` | — | 物料主数据本地缓存，提供 `toResourceItem()` 映射为 core `IResourceItem` + `mapUom()` 单位映射 |
+| `model/InventorySnapshot.java` | `BaseEntity` | — | 库存快照，按物料+工厂+库位+批次记录库存状态 |
+| `model/Transaction.java` | `BaseLifecycleEntity<TransactionStatus>` | `IErpTransaction` | 事务回传记录，带完整状态机 + 便捷方法（markSent/markConfirmed/markFailed/retry/cancel） |
+
+### 约定规则
+
+1. **适配器模式** — ERP 是外部系统适配层，不定义 core 接口；内部模型继承 `BaseEntity`/`BaseLifecycleEntity`；对外的契约通过 `ErpAdapterService` 接口暴露
+2. **模型继承** — 有状态实体（Transaction）继承 `BaseLifecycleEntity<S>`，通过便捷方法封装状态转换；无状态记录（MaterialCache, InventorySnapshot）继承 `BaseEntity`
+3. **IExpand 约定** — `erp.materialType` / `erp.batchManaged` / `erp.shelfLife` / `erp.ghsClass` / `erp.sourceSystem` / `erp.lastSyncTime` 挂载在 MaterialCache 上；ERP 单位编码 → core `UOM` 枚举映射通过 `mapUom()` 完成
+4. **物料映射** — `MaterialCache.toResourceItem()` 将 ERP 物料映射为 core `IResourceItem`：code→name, group→Material, ErpMaterialType→SourceType
+5. **事件驱动同步** — 库存变更通过 `DomainEventPublisher` 广播，ERP 适配器异步订阅回传；生产执行不因 ERP 回传失败而中断
+6. **测试规范** — Given-When-Then + `methodName_condition_expectedResult` + `@DisplayName` 中文描述；覆盖构造、状态转换（正常/失败/重试/取消/终态）、映射正确性、默认值
+7. **待实现模型** — 同步策略（全量/增量）、事务队列持久化、具体 ERP 对接适配器（SAP/Oracle/用友/金蝶）后续按架构文档迭代
+
+---
+
 ## 更新记录
 
 | 日期 | 内容 |
 |------|------|
+| 2026-07-18 | ERP 模块初步约定建立：3 个枚举 + 3 个模型 + ErpAdapterService 扩展 + 13 个测试 |
 | 2026-07-18 | PLM 模块初步约定建立：BlueprintStatus 状态枚举 + IBlueprintDiffer + BlueprintDiff + 3 个模型 + BlueprintService + 15 个测试 |
 | 2026-07-18 | Equip 模块初步约定建立：升级 MachineStatus 状态机 + 10 个测试 + 扩展字段 |
 | 2026-07-18 | EAM 模块初步约定建立：3 个 core 接口 + 5 个枚举 + 3 个模型 + 服务接口 + 测试 |
