@@ -145,11 +145,14 @@ PLM → PLM:   版本管理、审批流
 ## 遗留问题
 
 ### 当前实现
-- [x] `ProcessTemplate` — 工艺模板
-- [x] `BlueprintService` — 接口已定义
-- [ ] IBlueprint 版本管理 — 未实现
-- [ ] BOM 转化器 (EBOM→PBOM→MBOM) — 未实现
-- [ ] 工艺参数标准库 — 未创建
+- [x] `ProcessTemplate` — 工艺模板（含 status/parameters 字段）
+- [x] `BlueprintService` — 接口已充实（蓝图生命周期 + 工艺参数管理 + 版本管理 + BOM 管理）
+- [x] `Blueprint` — 蓝图核心模型（BaseLifecycleEntity + IBlueprint）
+- [x] `ProcessParameter` — 工艺参数模型（BaseEntity + IProcessParameter）
+- [x] `BlueprintStatus` — 蓝图生命周期状态枚举（core factory/ 包）
+- [x] `IBlueprintDiffer` + `BlueprintDiff` — 蓝图版本差异比较接口（core factory/ 包）
+- [ ] BOM 转化器 (EBOM→PBOM→MBOM) — 接口已声明，实现待开发
+- [ ] 工艺参数标准库 — 模型已创建，标准库待建立
 
 ### 待决策
 1. 蓝图的"版本"是递增字符串（1.0→2.0）还是语义版本（major.minor）？

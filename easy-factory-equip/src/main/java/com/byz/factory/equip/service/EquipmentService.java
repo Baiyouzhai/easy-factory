@@ -1,6 +1,6 @@
 package com.byz.factory.equip.service;
 
-import com.byz.factory.equip.model.Equipment;
+import com.byz.factory.batch.MachineStatus;
 
 /**
  * 设备服务 — Equip 模块核心。
@@ -12,12 +12,12 @@ import com.byz.factory.equip.model.Equipment;
 public interface EquipmentService {
 
     /** 查询设备状态 */
-    Equipment.Status getStatus(String equipmentCode);
+    MachineStatus getStatus(String equipmentCode);
 
-    /** 占用设备 */
+    /** 占用设备（状态 → RUNNING） */
     void occupy(String equipmentCode, String workOrderNo);
 
-    /** 释放设备 */
+    /** 释放设备（状态 → IDLE） */
     void release(String equipmentCode);
 
     /** 计算 OEE */
