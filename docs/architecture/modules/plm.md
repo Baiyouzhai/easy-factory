@@ -144,7 +144,7 @@ PLM 通过 core 的 `DomainEventPublisher` 发布事件，其他模块订阅：
 
 > **订阅方式：** `DomainEventPublisher.subscribe(PlmEventTypes.BLUEPRINT_RELEASED, handler)`
 >
-> 事件类型常量定义在 `core: com.byz.factory.factory.PlmEventTypes`。
+> 事件类型常量定义在 `core: com.byz.factory.event.types.PlmEventTypes`。
 
 ## 数据库设计要点
 

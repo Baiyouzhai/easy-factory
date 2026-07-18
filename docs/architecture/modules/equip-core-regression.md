@@ -1,7 +1,7 @@
 # Equip 模块 → Core 回归记录
 
 > **日期**: 2026-07-19
-> **状态**: 接口已创建，equip 模块已实现；**等待高层级会话审核**
+> **状态**: 接口已创建，equip 模块已实现；**✅ 已审核通过（2026-07-19）**
 > **决策**: 本次仅创建接口 + equip 实现，不做破坏性修改。现有 `Map<String,Object>` 保持兼容，逐步迁移。
 
 ---
@@ -50,7 +50,7 @@
 
 ### 其他业务模块 → 应订阅的事件
 
-| 模块 | 应订阅的事件（使用 `com.byz.factory.factory.EquipEventTypes`） | 用途 |
+| 模块 | 应订阅的事件（使用 `com.byz.factory.event.types.EquipEventTypes`） | 用途 |
 |------|--------------------------------------------------------------|------|
 | **MES** | `STATUS_CHANGED`, `FAULT_REPORTED`, `PRODUCTION_STARTED`, `PRODUCTION_STOPPED` | 工单中断/开工/完工跟踪 |
 | **Andon** | `FAULT_REPORTED` | 触发安灯报警 |
@@ -119,7 +119,35 @@
 
 ---
 
-## 五、验证
+## 五、高层级审核结论（2026-07-19）
+
+### 议题 1：IEquipmentBinding 迁移 → ✅ B（渐进迁移），保持 String 编码查找
+
+**结论**：String equipmentCode 是物理层与 Equip 之间的松耦合胶水——物理层通过编码查找设备，不持有 Equip 编译期依赖。`IEquipment` 的价值在接收方提供类型安全（查到后返回 IEquipment 而非 Object），而非替代编码查找。
+
+**动作**：`ProcessRouteMatcher.EquipmentFound` 可新增 `IEquipment` 字段（可选），`getEquipmentCode()` 保持 String 不变。
+
+### 议题 2：EngineeringBOM 引用 Recipe → ✅ A+B（引用为主，副本兜底）
+
+**结论**：当前 BOM 持有参数副本导致 PLM ↔ Equip 数据一致性风险。引用 recipeCode 让 Equip 成为参数权威源，但需保留 fallback。
+
+**动作**：`EquipmentAssignment` 增加可选字段 `recipeCode` + `phaseName`。不为空时从 Equip 读取参数；为空时走现有 parameters 副本。
+
+### 议题 3：FactoryCapacityProfile 消费 IOEMetrics → ✅ B（双轨并存）
+
+**结论**：规划与执行是两个时间维度。排程时没有实际 OEE 数据，只能用静态因子；执行完成后才有 IOEMetrics。两者互补。
+
+**动作**：保持 `machineOeeFactors` 为规划默认值，新增 `getEffectiveMachineTime(machineCode, IOEMetrics actualOee)` 重载。
+
+### 议题 4：EventTypes 统一位置 → ✅ 统一到 `com.byz.factory.event.types`
+
+**结论**：`com.byz.factory.factory` 包名语义不清。事件类型常量与 `IDomainEvent`、`DomainEventPublisher` 同属 event 族。
+
+**动作**：新建 `com.byz.factory.event.types` 包，迁移 `PlmEventTypes` 和 `EquipEventTypes`，同步更新引用方 import。
+
+---
+
+## 六、验证（含审核后）
 
 ```bash
 # core 测试（含新增接口编译）

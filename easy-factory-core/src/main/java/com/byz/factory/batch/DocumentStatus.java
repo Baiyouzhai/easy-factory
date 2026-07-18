@@ -15,8 +15,10 @@ public enum DocumentStatus implements ILifecycle.StatusEnum {
     DRAFT,
     /** 审核中 */
     UNDER_REVIEW,
-    /** 已批准 */
+    /** 已批准（待生效） */
     APPROVED,
+    /** 已生效 */
+    EFFECTIVE,
     /** 已拒绝 */
     REJECTED,
     /** 已作废 */
@@ -27,7 +29,8 @@ public enum DocumentStatus implements ILifecycle.StatusEnum {
         return switch (this) {
             case DRAFT        -> Set.of(UNDER_REVIEW, OBSOLETE);
             case UNDER_REVIEW -> Set.of(APPROVED, REJECTED);
-            case APPROVED     -> Set.of(OBSOLETE);
+            case APPROVED     -> Set.of(EFFECTIVE, OBSOLETE);
+            case EFFECTIVE    -> Set.of(OBSOLETE);
             case REJECTED     -> Set.of(DRAFT);  // 退回修改
             case OBSOLETE     -> Set.of();
         };

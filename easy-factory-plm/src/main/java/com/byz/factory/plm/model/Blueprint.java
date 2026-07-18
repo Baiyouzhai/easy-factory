@@ -4,7 +4,7 @@ import com.byz.factory.event.DomainEventPublisher;
 import com.byz.factory.event.IDomainEvent;
 import com.byz.factory.factory.BlueprintStatus;
 import com.byz.factory.factory.IBlueprint;
-import com.byz.factory.factory.PlmEventTypes;
+import com.byz.factory.event.types.PlmEventTypes;
 import com.byz.factory.process.IProcess;
 import com.byz.factory.shared.BaseLifecycleEntity;
 import com.byz.factory.shared.BumpType;

@@ -172,12 +172,23 @@ IoT ← MES:    开工/停机指令 → 下发到设备
 
 ## 遗留问题
 
-### 当前实现
-- [x] `DeviceConnection` — 设备连接管理
-- [x] `IotGatewayService` — 网关服务接口已定义
-- [ ] 协议适配器 (OPC UA/Modbus/MQTT/S7) — 未实现
+### 当前实现（2026-07-19 更新）
+- [x] `DeviceConnection` — 设备连接管理（实现 `IDeviceConnection`）
+- [x] `TagValue` — 标签采集值（实现 `ITagValue`，含换算链 + 3 种质量标准）
+- [x] `Command` — 指令下发（继承 `BaseLifecycleEntity<CommandStatus>`，完整状态机）
+- [x] `AlarmEvent` — 报警事件（实现 `IAlarmEvent`，含确认/恢复/联动动作）
+- [x] `CommandStatus` — 指令状态机（core `batch/`，QUEUED→SENT→ACKNOWLEDGED→COMPLETED）
+- [x] `IotEventTypes` — 9 个领域事件常量（core `event/types/`）
+- [x] `IotGatewayService` — 网关服务接口（13 方法：注册+采集+指令+报警）
+- [x] `IProtocolAdapter` — 协议适配器统一抽象（6 方法）
+- [x] `IDeviceConnection` / `ITagValue` / `ICommand` / `IAlarmEvent` — core 跨模块接口
+- [x] 46 个单元测试 — 覆盖构造、状态转换、非法转换、终态、业务方法、事件命名、接口契约
+- [ ] 协议适配器实现 (OPC UA/Modbus/MQTT/S7/HTTP) — 未实现
+- [ ] IotGatewayService 实现类 — 未实现
 - [ ] 时序数据存储 — 未确定时序数据库
 - [ ] 报警联动 — 未实现（报警→QMS偏差/Equip停机/MES暂停）
+- [ ] REST 控制器 — 未实现
+- [ ] IDataCollectionAction 桥接实现 — 未实现
 
 ### 待决策
 1. 协议适配器：自研还是集成现有库（Eclipse Milo OPC UA / Modbus4J）？

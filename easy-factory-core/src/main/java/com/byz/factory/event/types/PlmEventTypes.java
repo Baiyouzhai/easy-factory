@@ -1,4 +1,4 @@
-package com.byz.factory.factory;
+package com.byz.factory.event.types;
 
 /**
  * PLM 模块领域事件类型常量。
