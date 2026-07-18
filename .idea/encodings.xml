@@ -1,14 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="Encoding">
+    <file url="file://$PROJECT_DIR$/easy-factory-andon/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/easy-factory-andon/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/easy-factory-aps/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/easy-factory-aps/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/easy-factory-bi/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/easy-factory-bi/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/easy-factory-common/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/easy-factory-common/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/easy-factory-core/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/easy-factory-core/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/easy-factory-dms/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/easy-factory-dms/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/easy-factory-eam/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/easy-factory-eam/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/easy-factory-equip/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/easy-factory-equip/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/easy-factory-erp/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/easy-factory-erp/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/easy-factory-iot/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/easy-factory-iot/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/easy-factory-lims/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/easy-factory-lims/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/easy-factory-mes/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/easy-factory-mes/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/easy-factory-mps/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/easy-factory-mps/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/easy-factory-plm/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/easy-factory-plm/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/easy-factory-qms/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/easy-factory-qms/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/easy-factory-scm/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/easy-factory-scm/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/easy-factory-test/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/easy-factory-test/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/easy-factory-web/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/easy-factory-web/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/easy-factory-wms/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/easy-factory-wms/src/main/resources" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/src/main/resources" charset="UTF-8" />
   </component>

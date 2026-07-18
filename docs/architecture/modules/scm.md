@@ -82,3 +82,42 @@ SCM 管理供应商和采购——轻量模块，与 ERP/WMS 协作。
    - 采购订单创建 → `scm.po.created`（WMS 订阅以生成收货单）
    - 来料 → WMS 收货 → QMS 来料检（IQC）→ 放行/退货
 
+## 约定实施记录（2026-07-19）
+
+### 已实施
+
+#### Core 层（`com.byz.factory.batch`）
+
+| 文件 | 类型 | 说明 |
+|------|------|------|
+| `ISupplier.java` | 接口 | 供应商抽象（code/name/category/qualification/status/leadTime/onTimeRate/qualityRate） |
+| `IPurchaseOrder.java` | 接口 | 采购订单抽象 + 内嵌 `IPurchaseOrderItem` 接口 |
+| `SupplierStatus.java` | 值枚举 | ACTIVE / INACTIVE / BLACKLISTED |
+| `PurchaseOrderStatus.java` | 状态枚举 | DRAFT→APPROVED→SENT→RECEIVING→COMPLETED；+CANCELLED |
+
+#### SCM 模块模型
+
+| 文件 | 继承 | 实现 | 说明 |
+|------|------|------|------|
+| `Supplier.java` | `BaseEntity` | `ISupplier` | 资质管理（qualify/disqualify）+ 状态管理（deactivate/reactivate/blacklist） |
+| `PurchaseOrder.java` | `BaseLifecycleEntity<PurchaseOrderStatus>` | `IPurchaseOrder` | 完整状态机 + 采购明细管理 + 总金额计算 |
+| `PurchaseOrderItem.java` | — | `IPurchaseOrder.IPurchaseOrderItem` | 收货累加（receive/receivedQty/remaining/isFullyReceived） |
+
+#### ScmService 接口
+
+扩展为 14 个方法，覆盖供应商管理（注册/查询/合格列表/资质审核/暂停/恢复）和
+采购订单管理（创建/审批/发送/收货/取消/查询/按供应商查询）。
+
+#### 测试
+
+- `ScmModuleTest` — 8 个模型构造测试
+- `SupplierTest` — 10 个测试（构造/资质/状态/扩展字段/枚举）
+- `PurchaseOrderTest` — 21 个测试（构造/正常链/取消/终态/非法转换/明细/收货/枚举）
+
+### 待实施
+
+- [ ] InboundPlan 来料计划模型
+- [ ] 领域事件集成（scm.supplier.qualified / scm.po.created 等）
+- [ ] WMS 收货 → PO 进度自动更新
+- [ ] 供应商评分模型（SupplierScoring）
+

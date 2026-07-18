@@ -16,6 +16,15 @@ import java.util.List;
  * 模板是蓝图的"设计母版"——工艺工程师基于模板创建具体产品的蓝图。
  * 模板不需要 ILifecycle 状态机（状态仅 DRAFT/ACTIVE/OBSOLETED 简单标记）。
  *
+ * <h3>IExpand 约定</h3>
+ * <pre>
+ *   plm.template.category    — 模板类别
+ *   plm.template.version     — 版本号
+ *   plm.template.status      — 模板状态
+ *   plm.template.author      — 创建人
+ *   plm.template.processCount — 工序数量
+ * </pre>
+ *
  * @author 苏政
  */
 @Data
@@ -44,6 +53,20 @@ public class ProcessTemplate extends BaseEntity implements HasVersion {
         this.status = "DRAFT";
         this.processes = new ArrayList<>();
         this.parameters = new ArrayList<>();
+    }
+
+    // ==================== 业务便捷方法 ====================
+
+    /** 激活模板 */
+    public void activate() {
+        this.status = "ACTIVE";
+        markUpdated();
+    }
+
+    /** 废弃模板 */
+    public void obsolete() {
+        this.status = "OBSOLETED";
+        markUpdated();
     }
 
 }

@@ -123,16 +123,28 @@ GET    /api/plm/blueprints/{id}/diff         版本对比
 POST   /api/plm/bom/convert                   BOM转化
 GET    /api/plm/process-templates            工艺模板列表
 POST   /api/plm/parameters                   创建工艺参数
+GET    /api/plm/blueprints/{id}/feasibility  可制造性检查
+POST   /api/plm/change-requests              创建变更请求
 ```
 
-### 模块间接口
+### 模块间接口（领域事件驱动）
 
-```
-PLM → MES:   发布工艺路线（Blueprint）供工单引用
-PLM → core:  提供 IEstimateResourceModel 估算数据
-PLM ← ERP:   获取物料主数据供 BOM 引用
-PLM → PLM:   版本管理、审批流
-```
+PLM 通过 core 的 `DomainEventPublisher` 发布事件，其他模块订阅：
+
+| 事件类型 | 载荷 | 订阅方 | 用途 |
+|---------|------|--------|------|
+| `plm.blueprint.submitted` | blueprintCode, productCode, version | **DMS** | 触发审批流文档创建 |
+| `plm.blueprint.approved` | blueprintCode, productCode, version, approvedBy | **DMS** | 审批完成，归档 |
+| `plm.blueprint.rejected` | blueprintCode, version | **DMS** | 审批驳回通知 |
+| `plm.blueprint.released` | blueprintCode, productCode, version, processCount | **MES, APS, WMS** | MES 获取可执行路线，APS 更新排程列表，WMS 预置物料储位 |
+| `plm.blueprint.obsoleted` | blueprintCode, version | **MES, APS** | 标记蓝图不可用 |
+| `plm.change.requested` | blueprintCode, changeReason | **DMS** | 触发变更审批流 |
+| `plm.change.approved` | blueprintCode, newVersion | **MES** | 通知变更后的新版本 |
+| `plm.bom.transformed` | productCode, sourceType→targetType | **ERP** | 同步物料需求到采购计划 |
+
+> **订阅方式：** `DomainEventPublisher.subscribe(PlmEventTypes.BLUEPRINT_RELEASED, handler)`
+>
+> 事件类型常量定义在 `core: com.byz.factory.factory.PlmEventTypes`。
 
 ## 数据库设计要点
 
@@ -142,22 +154,59 @@ PLM → PLM:   版本管理、审批流
 - BOM转化规则表 (plm_bom_converter)
 - 版本差异记录表 (plm_version_diff)
 
+## 新增模型（2026-07-19 补充）
+
+### BOM 转化模型（`plm/bom/` 包）
+
+```
+BOMType (枚举):         EBOM → PBOM → MBOM (转化链)
+BOMConversionRequest:   转化请求（源类型+目标类型+蓝图+工厂）
+BOMConversionResult:    转化结果（产物BOM+应用规则+告警）
+IBOMConversionRule:     转化规则接口（⭐ 由 Common 模块规则引擎实现）
+```
+
+> **BOM 转化委托给 Common 模块的规则引擎执行。** 详见 `docs/architecture/modules/common-rule-engine-requirements.md`。
+
+### ChangeRequest (变更请求)
+
+```
+ChangeRequest (BaseLifecycleEntity):
+├── code:                变更请求编码 (如 CR-2026-001)
+├── blueprintCode:       关联蓝图编码
+├── fromVersion:         变更前版本
+├── toVersion:           变更后版本（实施后填写）
+├── changeReason:        变更原因（客户要求/工艺优化/法规更新/质量改进）
+├── description:         变更描述
+├── affectedDimensions:  影响维度 (PROCESS/PARAMETER/RESOURCE)
+├── requestedBy:         申请人
+├── approvedBy:          批准人
+└── Status: DRAFT → SUBMITTED → APPROVED → IMPLEMENTED → CLOSED
+                                ↓              ↓
+                            REJECTED       REJECTED
+```
+
 ## 遗留问题
 
 ### 当前实现
-- [x] `ProcessTemplate` — 工艺模板（含 status/parameters 字段）
-- [x] `BlueprintService` — 接口已充实（蓝图生命周期 + 工艺参数管理 + 版本管理 + BOM 管理）
-- [x] `Blueprint` — 蓝图核心模型（BaseLifecycleEntity + IBlueprint）
+- [x] `ProcessTemplate` — 工艺模板（含 status/parameters 字段 + activate/obsolete 业务方法）
+- [x] `BlueprintService` — 接口已充实（蓝图生命周期 + 工艺参数 + 版本 + BOM + 可制造性检查 + 变更管理）
+- [x] `Blueprint` — 蓝图核心模型（BaseLifecycleEntity + IBlueprint + 业务方法 + 版本策略 + 领域事件发布）
 - [x] `ProcessParameter` — 工艺参数模型（BaseEntity + IProcessParameter）
 - [x] `BlueprintStatus` — 蓝图生命周期状态枚举（core factory/ 包）
 - [x] `IBlueprintDiffer` + `BlueprintDiff` — 蓝图版本差异比较接口（core factory/ 包）
-- [ ] BOM 转化器 (EBOM→PBOM→MBOM) — 接口已声明，实现待开发
+- [x] `BlueprintDifferImpl` — 差异比较器默认实现（PLM service 层）
+- [x] `ChangeRequest` — 变更请求模型（ECR/ECO 生命周期 + 6 个业务方法）
+- [x] `BOMType` + `BOMConversionRequest/Result` + `IBOMConversionRule` — BOM 转化契约模型（plm/bom/ 包）
+- [x] `IVersionStrategy` + `SemanticVersion` + `BumpType` — 版本管理策略体系（⭐ core shared/ 包，DMS/PLM/LIMS 共用）
+- [x] `PlmEventTypes` — PLM 领域事件类型常量（⭐ core factory/ 包，供 MES/DMS/APS/ERP/WMS 订阅）
+- [ ] BOM 转化规则引擎实现 — 契约已定义（`IBOMConversionRule`），委托 Common 模块实现（见 `common-rule-engine-requirements.md`）
+- [ ] BlueprintService 实现类 — 接口已完善（30+ 方法），待下一阶段实现
 - [ ] 工艺参数标准库 — 模型已创建，标准库待建立
 
-### 待决策
-1. 蓝图的"版本"是递增字符串（1.0→2.0）还是语义版本（major.minor）？
-2. EBOM→PBOM→MBOM 的转化规则如何配置？用脚本还是规则引擎？
-3. PLM 与 MES 的交互：蓝图发布后推送通知还是 MES 主动拉取？
+### 已决策
+1. ✅ **版本号策略** — 采用语义版本（MAJOR.MINOR.PATCH），由 core `SemanticVersion` + `SemanticVersionStrategy` 统一管理；DMS 文档可用 `IncrementalVersionStrategy`（简单递增）
+2. ✅ **BOM 转化规则** — 采用规则引擎，由 Common 模块提供 `IRuleEngine`；PLM 提供 `IBOMConversionRule` 契约
+3. ✅ **PLM 与 MES 交互** — 推送模式：蓝图 RELEASED 时通过 `DomainEventPublisher` 发布 `plm.blueprint.released` 事件，MES 订阅处理
 
 ## AI 协作建议（2026-07-18）
 

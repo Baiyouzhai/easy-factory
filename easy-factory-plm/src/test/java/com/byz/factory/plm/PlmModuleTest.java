@@ -1,9 +1,12 @@
 package com.byz.factory.plm;
 
+import com.byz.factory.factory.BlueprintDiff;
 import com.byz.factory.factory.BlueprintStatus;
 import com.byz.factory.plm.model.Blueprint;
 import com.byz.factory.plm.model.ProcessParameter;
 import com.byz.factory.plm.model.ProcessTemplate;
+import com.byz.factory.plm.service.BlueprintDifferImpl;
+import com.byz.factory.process.Process;
 import com.byz.factory.shared.UOM;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -66,6 +69,35 @@ class PlmModuleTest {
         // Then
         assertEquals(1, template.getParameters().size());
         assertEquals("淬火温度", template.getParameters().get(0).getName());
+    }
+
+    // ==================== ProcessTemplate 业务便捷方法 ====================
+
+    @Test
+    @DisplayName("ProcessTemplate.activate — DRAFT → ACTIVE")
+    void processTemplate_activate_shouldSetActive() {
+        // Given
+        ProcessTemplate template = new ProcessTemplate("TPL-010", "激活测试模板", "化工");
+
+        // When
+        template.activate();
+
+        // Then
+        assertEquals("ACTIVE", template.getStatus());
+    }
+
+    @Test
+    @DisplayName("ProcessTemplate.obsolete — ACTIVE → OBSOLETED")
+    void processTemplate_obsolete_shouldSetObsoleted() {
+        // Given
+        ProcessTemplate template = new ProcessTemplate("TPL-011", "废弃测试模板", "电子");
+        template.activate();
+
+        // When
+        template.obsolete();
+
+        // Then
+        assertEquals("OBSOLETED", template.getStatus());
     }
 
     // ==================== Blueprint ====================
@@ -217,6 +249,144 @@ class PlmModuleTest {
         assertEquals("李四", bp.getApprovedBy());
     }
 
+    // ==================== Blueprint 业务便捷方法 ====================
+
+    @Test
+    @DisplayName("Blueprint.submitForReview — DRAFT → UNDER_REVIEW")
+    void blueprint_submitForReview_shouldTransitionToUnderReview() {
+        // Given
+        Blueprint bp = new Blueprint("BP-010", "测试蓝图", "PROD-TEST");
+
+        // When
+        bp.submitForReview();
+
+        // Then
+        assertEquals(BlueprintStatus.UNDER_REVIEW, bp.getStatus());
+    }
+
+    @Test
+    @DisplayName("Blueprint.approve — UNDER_REVIEW → APPROVED，记录审批人")
+    void blueprint_approve_shouldTransitionAndRecordApprover() {
+        // Given
+        Blueprint bp = new Blueprint("BP-011", "测试蓝图", "PROD-TEST");
+        bp.submitForReview();
+
+        // When
+        bp.approve("王审批");
+
+        // Then
+        assertEquals(BlueprintStatus.APPROVED, bp.getStatus());
+        assertEquals("王审批", bp.getApprovedBy());
+    }
+
+    @Test
+    @DisplayName("Blueprint.reject — UNDER_REVIEW → DRAFT")
+    void blueprint_reject_shouldReturnToDraft() {
+        // Given
+        Blueprint bp = new Blueprint("BP-012", "测试蓝图", "PROD-TEST");
+        bp.submitForReview();
+
+        // When
+        bp.reject();
+
+        // Then
+        assertEquals(BlueprintStatus.DRAFT, bp.getStatus());
+    }
+
+    @Test
+    @DisplayName("Blueprint.reject — APPROVED → DRAFT（批准后发现问题回退）")
+    void blueprint_reject_shouldReturnFromApprovedToDraft() {
+        // Given
+        Blueprint bp = new Blueprint("BP-013", "测试蓝图", "PROD-TEST");
+        bp.submitForReview();
+        bp.approve("王审批");
+
+        // When
+        bp.reject();
+
+        // Then
+        assertEquals(BlueprintStatus.DRAFT, bp.getStatus());
+    }
+
+    @Test
+    @DisplayName("Blueprint.release — APPROVED → RELEASED")
+    void blueprint_release_shouldTransitionToReleased() {
+        // Given
+        Blueprint bp = new Blueprint("BP-014", "测试蓝图", "PROD-TEST");
+        bp.submitForReview();
+        bp.approve("王审批");
+
+        // When
+        bp.release();
+
+        // Then
+        assertEquals(BlueprintStatus.RELEASED, bp.getStatus());
+    }
+
+    @Test
+    @DisplayName("Blueprint.obsolete — 从 DRAFT 直接废弃")
+    void blueprint_obsolete_shouldTransitionFromDraft() {
+        // Given
+        Blueprint bp = new Blueprint("BP-015", "测试蓝图", "PROD-TEST");
+
+        // When
+        bp.obsolete();
+
+        // Then
+        assertEquals(BlueprintStatus.OBSOLETED, bp.getStatus());
+    }
+
+    @Test
+    @DisplayName("Blueprint.obsolete — 从 RELEASED 废弃")
+    void blueprint_obsolete_shouldTransitionFromReleased() {
+        // Given
+        Blueprint bp = new Blueprint("BP-016", "测试蓝图", "PROD-TEST");
+        bp.submitForReview();
+        bp.approve("赵审批");
+        bp.release();
+
+        // When
+        bp.obsolete();
+
+        // Then
+        assertEquals(BlueprintStatus.OBSOLETED, bp.getStatus());
+    }
+
+    @Test
+    @DisplayName("Blueprint 完整生命周期 — 通过便捷方法走完")
+    void blueprint_convenienceMethods_shouldCompleteFullLifecycle() {
+        // Given
+        Blueprint bp = new Blueprint("BP-017", "完整生命周期蓝图", "PROD-LC");
+
+        // When & Then: DRAFT → UNDER_REVIEW
+        bp.submitForReview();
+        assertEquals(BlueprintStatus.UNDER_REVIEW, bp.getStatus());
+
+        // When & Then: UNDER_REVIEW → APPROVED
+        bp.approve("钱审批");
+        assertEquals(BlueprintStatus.APPROVED, bp.getStatus());
+        assertEquals("钱审批", bp.getApprovedBy());
+
+        // When & Then: APPROVED → RELEASED
+        bp.release();
+        assertEquals(BlueprintStatus.RELEASED, bp.getStatus());
+
+        // When & Then: RELEASED → OBSOLETED
+        bp.obsolete();
+        assertEquals(BlueprintStatus.OBSOLETED, bp.getStatus());
+    }
+
+    @Test
+    @DisplayName("Blueprint 便捷方法 — 非法操作抛出异常")
+    void blueprint_convenienceMethod_illegalCall_shouldThrow() {
+        // Given: DRAFT 状态不能直接 release
+        Blueprint bp = new Blueprint("BP-018", "非法操作蓝图", "PROD-ILL");
+
+        // When & Then
+        assertThrows(IllegalStateException.class, () -> bp.release());
+        assertThrows(IllegalStateException.class, () -> bp.approve("某人"));
+    }
+
     // ==================== ProcessParameter ====================
 
     @Test
@@ -303,5 +473,128 @@ class PlmModuleTest {
 
         // OBSOLETED — 终端
         assertTrue(BlueprintStatus.OBSOLETED.allowedTransitions().isEmpty());
+    }
+
+    // ==================== BlueprintDifferImpl 测试 ====================
+
+    @Test
+    @DisplayName("BlueprintDiffer — 相同蓝图无差异")
+    void blueprintDiffer_identicalBlueprints_shouldHaveNoDiff() {
+        // Given
+        Blueprint bp1 = new Blueprint("BP-100", "相同蓝图", "PROD-SAME");
+        bp1.setVersion("1.0.0");
+        Blueprint bp2 = new Blueprint("BP-100", "相同蓝图", "PROD-SAME");
+        bp2.setVersion("2.0.0");
+
+        BlueprintDifferImpl differ = new BlueprintDifferImpl();
+
+        // When
+        BlueprintDiff diff = differ.compare(bp1, bp2);
+
+        // Then
+        assertFalse(diff.hasDiff());
+        assertEquals("1.0.0", diff.versionA());
+        assertEquals("2.0.0", diff.versionB());
+    }
+
+    @Test
+    @DisplayName("BlueprintDiffer — 检测新增工序")
+    void blueprintDiffer_addedProcess_shouldDetect() {
+        // Given
+        Blueprint bp1 = new Blueprint("BP-101", "旧版", "PROD-DIFF");
+        bp1.setVersion("1.0.0");
+
+        Blueprint bp2 = new Blueprint("BP-101", "新版", "PROD-DIFF");
+        bp2.setVersion("2.0.0");
+        bp2.getProcesses().add(new Process("P-001", "混合"));
+
+        BlueprintDifferImpl differ = new BlueprintDifferImpl();
+
+        // When
+        BlueprintDiff diff = differ.compare(bp1, bp2);
+
+        // Then
+        assertTrue(diff.hasDiff());
+        assertEquals(1, diff.diffItems().size());
+        assertEquals(BlueprintDiff.DiffType.ADDED, diff.diffItems().get(0).diffType());
+        assertEquals("P-001", diff.diffItems().get(0).targetCode());
+    }
+
+    @Test
+    @DisplayName("BlueprintDiffer — 检测删除工序")
+    void blueprintDiffer_removedProcess_shouldDetect() {
+        // Given
+        Blueprint bp1 = new Blueprint("BP-102", "旧版", "PROD-DIFF");
+        bp1.setVersion("1.0.0");
+        bp1.getProcesses().add(new Process("P-001", "混合"));
+
+        Blueprint bp2 = new Blueprint("BP-102", "新版", "PROD-DIFF");
+        bp2.setVersion("2.0.0");
+
+        BlueprintDifferImpl differ = new BlueprintDifferImpl();
+
+        // When
+        BlueprintDiff diff = differ.compare(bp1, bp2);
+
+        // Then
+        assertTrue(diff.hasDiff());
+        assertEquals(BlueprintDiff.DiffType.REMOVED, diff.diffItems().get(0).diffType());
+    }
+
+    @Test
+    @DisplayName("BlueprintDiffer — 检测工序重排序")
+    void blueprintDiffer_reorderedProcess_shouldDetect() {
+        // Given
+        Blueprint bp1 = new Blueprint("BP-103", "旧版", "PROD-DIFF");
+        bp1.setVersion("1.0.0");
+        bp1.getProcesses().add(new Process("P-001", "混合"));
+        bp1.getProcesses().add(new Process("P-002", "压片"));
+
+        Blueprint bp2 = new Blueprint("BP-103", "新版", "PROD-DIFF");
+        bp2.setVersion("2.0.0");
+        bp2.getProcesses().add(new Process("P-002", "压片"));
+        bp2.getProcesses().add(new Process("P-001", "混合"));
+
+        BlueprintDifferImpl differ = new BlueprintDifferImpl();
+
+        // When
+        BlueprintDiff diff = differ.compare(bp1, bp2);
+
+        // Then
+        assertTrue(diff.hasDiff());
+        assertTrue(diff.diffItems().stream()
+                .anyMatch(item -> item.diffType() == BlueprintDiff.DiffType.REORDERED));
+    }
+
+    @Test
+    @DisplayName("BlueprintDiffer — 多维度差异（新增+删除+重排）")
+    void blueprintDiffer_multiDimensionDiff_shouldDetectAll() {
+        // Given
+        Blueprint bp1 = new Blueprint("BP-104", "旧版", "PROD-MULTI");
+        bp1.setVersion("1.0.0");
+        bp1.getProcesses().add(new Process("P-001", "混合"));
+        bp1.getProcesses().add(new Process("P-002", "制粒"));
+        bp1.getProcesses().add(new Process("P-003", "压片"));
+
+        Blueprint bp2 = new Blueprint("BP-104", "新版", "PROD-MULTI");
+        bp2.setVersion("2.0.0");
+        bp2.getProcesses().add(new Process("P-001", "混合"));
+        bp2.getProcesses().add(new Process("P-004", "包衣"));  // 新增
+        bp2.getProcesses().add(new Process("P-003", "压片"));
+        // P-002 制粒 被删除
+
+        BlueprintDifferImpl differ = new BlueprintDifferImpl();
+
+        // When
+        BlueprintDiff diff = differ.compare(bp1, bp2);
+
+        // Then
+        assertTrue(diff.hasDiff());
+        assertTrue(diff.diffItems().stream()
+                .anyMatch(item -> item.diffType() == BlueprintDiff.DiffType.ADDED
+                        && "P-004".equals(item.targetCode())));
+        assertTrue(diff.diffItems().stream()
+                .anyMatch(item -> item.diffType() == BlueprintDiff.DiffType.REMOVED
+                        && "P-002".equals(item.targetCode())));
     }
 }
