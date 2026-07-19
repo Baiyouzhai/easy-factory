@@ -114,3 +114,36 @@ dms ─┘                                              eam ────┘ ====
 | P2 | qms, andon | 质量管理和异常响应——制造系统的闭环关键 |
 | P3 | aps, eam, dms, bi, scm | 高级排程、资产管理、文档管理、看板、供应链 |
 | P4 | web, test | 统一门户和集成测试——所有模块完成后聚合 |
+
+---
+
+## 后 Phase 5：协作层模块
+
+核心 MOM 完成后，依次构建协作层：
+
+| 模块 | 说明 | 依赖 |
+|------|------|------|
+| **crm** | 客户+订单+投诉管理 | MPS(订单→计划), QMS(投诉→CAPA) |
+| **scm** | 供应商+采购+来料 | WMS(采购→收货) |
+| **dms** | 文档+审批流+审计追踪 | QMS+LIMS(批记录归档) |
+| **bi** | 看板+报表+KPI | 全部(只读) |
+
+---
+
+## 设计裁定（待 core 会话实现）
+
+以下裁定来自 2026-07-18 设计讨论，尚未写入 core 代码：
+
+### 描述体系：池→线固化（已裁定，design-decisions.md §5）
+
+配线是配置，不是计算。三层描述体系：
+
+| 层 | 在哪 | 内容 |
+|----|------|------|
+| 设计态（池） | PLM / IBlueprint | Action 描述"需要什么能力"，不绑定设备 |
+| 设线态（固化） | Physical / IEquipmentBinding | 工程师配置 Action→设备映射（Primary/Backup） |
+| 执行态（走线） | MES Action.execute() | 读绑定→查设备状态→选可用的→执行 |
+
+**配置化切换**：同一 Blueprint 在不同工厂用不同 IEquipmentBinding 配置集。切换工厂 = 加载不同的绑定配置。
+
+**明确否决**：ICapability / CapabilityPool / IFrozenRoute / IExecutionResolver — 不做。参见 design-decisions.md §5.5。

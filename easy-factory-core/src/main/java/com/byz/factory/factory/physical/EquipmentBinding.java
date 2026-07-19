@@ -13,6 +13,9 @@ public class EquipmentBinding implements IEquipmentBinding {
     private final Set<String> supportedActionCodes;
     private final boolean primary;
     private final Map<String, Object> parameters;
+    private final List<List<String>> supportedSequences;
+    private int setupMinutes;
+    private int cleanupMinutes;
 
     public EquipmentBinding(String equipmentCode) {
         this(equipmentCode, Collections.emptySet(), true);
@@ -23,6 +26,9 @@ public class EquipmentBinding implements IEquipmentBinding {
         this.supportedActionCodes = new LinkedHashSet<>(supportedActionCodes);
         this.primary = primary;
         this.parameters = new LinkedHashMap<>();
+        this.supportedSequences = new ArrayList<>();
+        this.setupMinutes = 0;
+        this.cleanupMinutes = 0;
     }
 
     @Override
@@ -36,6 +42,17 @@ public class EquipmentBinding implements IEquipmentBinding {
 
     @Override
     public Map<String, Object> getParameters() { return parameters; }
+
+    @Override
+    public int getSetupMinutes() { return setupMinutes; }
+
+    @Override
+    public int getCleanupMinutes() { return cleanupMinutes; }
+
+    @Override
+    public List<List<String>> getSupportedSequences() {
+        return Collections.unmodifiableList(supportedSequences);
+    }
 
     // ---- Fluent API ----
 
@@ -55,6 +72,27 @@ public class EquipmentBinding implements IEquipmentBinding {
 
     public EquipmentBinding setParameter(String key, Object value) {
         parameters.put(key, value);
+        return this;
+    }
+
+    public EquipmentBinding setSetupMinutes(int minutes) {
+        this.setupMinutes = minutes;
+        return this;
+    }
+
+    public EquipmentBinding setCleanupMinutes(int minutes) {
+        this.cleanupMinutes = minutes;
+        return this;
+    }
+
+    /**
+     * 声明一个动作序列。序列中的动作自动添加到 supportedActionCodes。
+     * 多次调用声明多条可选序列（如正向和逆向）。
+     */
+    public EquipmentBinding addSequence(String... actionCodes) {
+        List<String> seq = List.of(actionCodes);
+        supportedSequences.add(seq);
+        supportedActionCodes.addAll(seq);
         return this;
     }
 

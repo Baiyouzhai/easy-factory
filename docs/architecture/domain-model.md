@@ -1,4 +1,4 @@
-# 领域模型总图 v4
+# 领域模型总图 v5
 
 > 最后更新: 2026-07-19
 > v5 变更: 状态枚举扩展至 20 个（新增 BlueprintStatus/FormulaStatus/WeighingTaskStatus/BatchRecordStatus/CommandStatus/PickingTaskStatus/PurchaseOrderStatus/TransactionStatus/MaintenanceOrderStatus/MaterialStatus 等）；§5 新增 batch/ 包跨模块接口（equip/scm/lims/wms/mps/dms/iot/erp 共 30+ 接口）；§8.1 实现矩阵更新为 07-19 约定后状态；§10 统计重新计算；新增 event/types/ 包

@@ -3,34 +3,56 @@
 > 独立于 CLAUDE.md，专供各模块会话追踪进度。
 > CLAUDE.md 保持稳定，本文件频繁更新。
 
-## easy-factory-core
+## easy-factory-core (v1.0)
 
-### 已完成 (v0.1.2)
+### 核心定义统计
 
-- [x] Core 接口体系：`IResource(extends IData)` → `IResourceModel`, `IAction(getImportance)` → `IActionModel`
-- [x] **Equip 模块接口回归**：`IEquipment`(extends IMachine+ILifecycle), `IEquipmentParameter`(含 isInControl default), `IEquipmentRecipe` + `IRecipePhase`, `IOEMetrics`(A×P×Q)
-- [x] **EquipEventTypes** 迁入 core `com.byz.factory.factory`（与 PlmEventTypes 同级）
-- [x] 4M1E+Product 资源分类 (`Dict.SourceGroup`)
-- [x] 10 种动作语义枚举 + `Action.execute()` 按 executeType 路由资源处理
-- [x] `IScriptEngine` 抽象 + `GraalScriptEngine` 沙箱骨架
-- [x] `IBatch` / `ITraceable` / `BatchStatus`(含RELEASED) 批次追溯
-- [x] `ILifecycle<S>` 通用状态机 + `IDomainEvent` 领域事件
-- [x] `IWorkOrder` / `IInspectionOrder` 跨模块抽象
-- [x] `ScriptMetadata` + `ScriptRegistry` + 4 个示例脚本 + `registry.json`
-- [x] `ActionGroup` 正确继承 `model.Action` 并实现复合执行
-- [x] `Process.execute()` 动作链正确串联
-- [x] `Process.setResourcePack/setRequireResources` 正常存储
-- [x] `IResource` 继承 `IData` 解决 `toJsonString()` 编译错误
-- [x] `Constant.java` 构造器参数修复
-- [x] `BatchStatus` 补充 `RELEASED` (GMP放行节点)
-- [x] `IAction` 增加 `getImportance()` 消除孤儿方法
+| 类别 | 数量 | 说明 |
+|------|------|------|
+| 接口 | 60+ | process/resource/factory/batch/equip/scm/lims/wms/iot/eam/mps/dms/erp 跨模块契约 |
+| 状态枚举 | 20 | 全部实现 ILifecycle.StatusEnum |
+| 纯值枚举 | 10 | SupplierStatus/MaterialStatus/MaintenanceType 等 |
+| 事件常量类 | 8 | MesEventTypes/EquipEventTypes/PlmEventTypes/LimsEventTypes/MpsEventTypes/DmsEventTypes/IotEventTypes/ApsEventTypes |
+| 操作分析模型 | 15+ | ProcessRouteMatcher/BottleneckDetector/ProductionLeadTime 等 |
+| 测试 | 600+ | core 182 + 各模块集成测试 |
+| 总计 | 91 | 详见 domain-model.md v5 |
+
+### 已完成（截至 2026-07-19）
+
+- [x] 动作语义: 10 种 Execute 枚举 + Action/ActionGroup/ActionLibrary
+- [x] 资源模型: 4M1E+Product 全接口 (IMachine/IMaterial/IPersonnel/IMethod/IEnvironment) + IResourcePack
+- [x] 物理模型: IFactory/IWorkstation/IEquipmentBinding/IProductionLine/LineNode/LineConnection/StationType
+- [x] 蓝图三阶段: CustomerSpec → EngineeringBOM → WorkOrder (Blueprint 冻结)
+- [x] 批次追溯: IBatch (含 WIP 位置+物料谱系) / ITraceable (before/after 快照)
+- [x] 20 个状态枚举全部实现 (跨 10 个模块包)
+- [x] 23 个跨模块接口 (equip/scm/lims/wms/iot/eam/mps/dms/erp 领域包)
+- [x] 8 个事件类型常量类 (event/types/，含跨模块订阅指南)
+- [x] 生命周期: ILifecycle<S> 泛型状态机 + BaseLifecycleEntity
+- [x] 领域事件: IDomainEvent + DomainEventPublisher (前缀匹配+unsubscribe)
+- [x] 审计追踪: IAuditable + AuditTrail record + IElectronicSignature + SignatureMeaning
+- [x] 操作分析: IMatchingStrategy/ProcessRouteMatcher/BottleneckDetector/ProductionLeadTime/ResourceRequirementExploder
+- [x] 时间模型: ITimed 5层接口 + ActionDuration/GmpActionDuration/PreciseActionDuration
+- [x] 计量单位: UOM 枚举 (KG/G/L/PCS/CELSIUS/PERCENT 等)
+- [x] 工艺参数: IProcessParameter (code/name/uom/targetValue/上限/下限)
+- [x] 脚本引擎: IScriptEngine 抽象 + IActionModel.execute() 空指针保护
+- [x] 哨兵对象: EmptyAction/EmptyResourcePack
+- [x] 仓储抽象: IRepository + IPageRequest/IPageResult + Sort
+- [x] 死代码清理: script/Action.java / IProcessRoute / ProcessCompatibilityChecker 已删除
+- [x] 拼写修正: Noting → Nothing
+- [x] 计算器泛型化: Map<String, ActionDuration> → Map<String, ? extends ITimed>
+- [x] IResourcePack.copy() 默认不再返回 null
+- [x] require() 接口与实现默认值一致 (false)
+- [x] formatDuration() 7处重复代码提取到 ReportPrinter
+- [x] BillOfMaterial → IBillOfMaterial 接口化
+- [x] Dict.SourceType 从2值扩展到18值
 
 ### 待进行
 
-- [ ] GraalJS 沙箱实际集成
+- [ ] GraalJS 沙箱实际集成（POM 依赖已注释，待网络就绪）
 - [ ] ScriptExecutor (Nashorn) 与 IScriptEngine (GraalJS) 双轨统一
-- [ ] 空壳类补充
-- [ ] 单元测试覆盖
+- [ ] IAction 子接口桥接默认实现 (IEquipmentAction.execute() → IActionModel.super.execute() + 子系统专用逻辑)
+- [ ] IBlueprint 公共实现类（当前引用方各自创建匿名内部类）
+- [ ] DomainEventPublisher 异步分发升级
 
 ---
 
@@ -107,6 +129,160 @@
 
 ---
 
+## 活跃任务（2026-07-19 池→线固化实施列表）
+
+> 任务按会话分配。每个任务的"完成"标准 = 编译通过 + 测试通过 + 本文件更新记录。
+
+## 会话任务卡（2026-07-19）
+
+> 编号 = 会话简称 + 序号。完成标准：编译通过 + 测试通过 + 更新本文件记录。
+
+### core（含 factory/physical 子包 — 物理层模型）
+
+| # | 任务 |
+|---|------|
+| C1 | **IWorkstation.findCapableEquipment(actionCode)** — 确认按 actionCode 返回设备列表，按 isPrimary() 降序排列（Primary 在前）。验收：同一 actionCode 可查到多台设备 + 排序正确 ✅ 已有实现 |
+| C2 | **IProductionLine / IWorkstation** — 确认"产线=有序工位序列，工位=设备绑定集合"。验收：与 overview.md §3 一致 ✅ 已完成 |
+| C3 | **IBlueprint** — 确认 Action 中无设备引用字段（设备是绑定层的事）。验收：遍历所有 Action，无一引用 Equipment ✅ 已完成 |
+| C4 | **GroupType 残留** — 确认清除完毕。验收：grep -r "GroupType" 零结果 ✅ 已完成 |
+| C5 | **Physical 无 Equip 依赖** — 确认 Physical 包不 import Equip。验收：无业务模块 import ✅ 已完成 |
+| C6 | **IProductionLine 实现** — addWorkstation → 工位按 LineNode 有序排列。验收：按顺序遍历工位 ✅ 已完成 |
+| C7 | **IWorkstation 实现** — 管理一组 IEquipmentBinding。验收：findBinding(actionCode) → List ✅ 已完成 |
+| C8 | **IEquipmentBinding 实现** — actionCode + equipmentCode + priority + parameters。验收：1:N 绑定 + 按 priority 排序 ✅ 已完成 |
+| C9 | **IEquipmentBinding 预留 setup/cleanup** — 接口增加 `getSetupMinutes()` / `getCleanupMinutes()` 可选方法（default 返回 0）。APS 排程时消费，MES 执行时忽略。验收：接口定义，不影响现有编译 ✅ 已完成 |
+| C10 | **IEquipmentBinding 序列约束三档防呆** — `SequenceMatch` 枚举(EXACT/FLEXIBLE/REJECTED)。EXACT=顺序一致直接通过；FLEXIBLE=动作集合匹配但顺序不同，允许但标记 setup 惩罚；REJECTED=设备不支持某动作，门禁拒绝。`getSupportedSequences()` default 空=跳过检查。验收：枚举定义 + `matchSequence(List<String>)` 方法 + 绑定创建时校验 ✅ 已完成 |
+
+### plm — 设计态（池）
+
+| # | 任务 |
+|---|------|
+| P1 | Blueprint 的 Action 通过 requireResources() 描述能力需求，不绑定设备编码 |
+| P2 | Blueprint 版本发布流程：DRAFT→UNDER_REVIEW→APPROVED→RELEASED→OBSOLETED。验收：5 状态全过 |
+| P3 | BlueprintService.publishToMes(blueprint, factoryCode) — 发布时携带工厂绑定配置 |
+
+### equip — 设备层
+
+| # | 任务 |
+|---|------|
+| E1 | Equipment.getStatus() → MachineStatus 枚举。验收：MES 可按 code 查询 |
+| E2 | Equipment.occupy() / release() — 被 MES 调用。验收：occupy→RUNNING, release→IDLE |
+| E3 | 设备绑定配置数据结构 — 可按 factoryCode + actionCode 返回绑定列表 |
+
+### mes — 执行态（走固化线）
+
+| # | 任务 |
+|---|------|
+| M1 | 工单创建时冻结 Blueprint 版本号，运行时按版本号获取 Blueprint |
+| M2 | Action 执行：查 IEquipmentBinding → Primary 可用用 Primary，不可用 fallback Backup |
+| M3 | 全故障处理：通知 Andon → 暂停工序 → INTERRUPTED |
+| M4 | 每个 Action 后生成 ActionRecord(ITraceable) — 操作人/设备/时间/快照 |
+
+### lims — 配方系统
+
+| # | 任务 |
+|---|------|
+| L1 | Formula 关联 Blueprint 版本（按 blueprintCode+version），称量任务按工单创建 |
+| L2 | WeighingTask 状态流转：PENDING→WEIGHING→VERIFIED→COMPLETE。验收：5 状态全过 |
+| L3 | 称量防错脚本集成 — 天平读数 vs 配方量偏差校验 |
+
+### wms — 仓储管理
+
+| # | 任务 |
+|---|------|
+| W1 | Receipt 状态流转：PENDING→PARTIAL→COMPLETED→CLOSED。验收：4 状态 + 明细管理 |
+| W2 | PickingTask 按 MES 工单创建 — FIFO/FEFO 批次选择 |
+| W3 | InventorySnapshot — 在手/已分配/可用/待检/不合格。验收：负数防护 |
+
+### iot — 设备互联
+
+| # | 任务 |
+|---|------|
+| I1 | DeviceConnection 心跳检测 + 超时判定 |
+| I2 | TagValue 采集 — OPC UA 三态质量模型，3 个工厂方法(of/bad/uncertain) |
+| I3 | IProtocolAdapter 接口 — connect/disconnect/read/write/subscribe |
+
+### erp — 资源计划集成
+
+| # | 任务 |
+|---|------|
+| R1 | MaterialCache.toResourceItem() — ERP 物料→core IResourceItem 映射 |
+| R2 | Transaction 回传队列 — PENDING→SENT→CONFIRMED/FAILED 状态流转 |
+| R3 | ErpAdapterService 库存查询 — queryStock(materialCode, plantCode) |
+
+### eam — 资产管理
+
+| # | 任务 |
+|---|------|
+| A1 | Asset 状态流转：IDLE→IN_USE→UNDER_MAINTENANCE→SCRAPPED。验收：4 状态全过 |
+| A2 | MaintenanceOrder — 关联 Asset + EquipmentCode + 停机时长 + 备件清单 |
+| A3 | CalibrationRecord — 校准结果 + 下次校准日期 + 到期提醒 |
+
+### mps — 主生产计划
+
+| # | 任务 |
+|---|------|
+| S1 | ProductionPlan 状态流转：DRAFT→APPROVED→RELEASED→IN_PROGRESS→COMPLETED→CLOSED |
+| S2 | DemandSource 注册 — SALES_ORDER/FORECAST/SAFETY_STOCK/MANUAL 四种来源 |
+| S3 | 粗产能检查 — 使用 FactoryCapacityProfile + BottleneckDetector |
+
+### aps — 高级排程
+
+| # | 任务 |
+|---|------|
+| K1 | Schedule 状态流转：DRAFT→OPTIMIZED→DISPATCHED→IN_PROGRESS→COMPLETED |
+| K2 | SchedulingRule 排程引擎 — EDD/SPT/CR 三种策略 + 可组合 Comparator |
+| K3 | ResourceCalendar — 可用窗口 + 产能 + canFit/overlapMinutes |
+
+### qms — 质量管理
+
+| # | 任务 |
+|---|------|
+| Q1 | InspectionOrder 创建 + 状态流转：PENDING→IN_PROGRESS→PASSED/FAILED→CLOSED |
+| Q2 | 质量门禁判定脚本 — 放行/让步/拒收 + 偏差触发 |
+| Q3 | SPC 数据订阅 — 消费 iot.tag.collected → 控制限判定 |
+
+### andon — 安灯系统
+
+| # | 任务 |
+|---|------|
+| N1 | AndonCall 触发 + 状态流转：OPEN→ACKNOWLEDGED→RESOLVED/ESCALATED→CLOSED |
+| N2 | 逐级上报规则 — 静态配置数据库表，操作工→班组长→车间主任→厂长 |
+| N3 | 多源事件订阅 — mes.process.interrupted + equip.fault + qms.spc.outOfControl |
+
+### dms — 文档管理
+
+| # | 任务 |
+|---|------|
+| D1 | Document 状态流转：DRAFT→UNDER_REVIEW→APPROVED→EFFECTIVE→OBSOLETED |
+| D2 | ApprovalWorkflow — 多步骤审批流 + 进度追踪 + 完成判定 |
+| D3 | 审计追踪 — AuditTrail 记录 entityType/entityId/action/operator/before/after |
+
+### scm — 供应链
+
+| # | 任务 |
+|---|------|
+| U1 | Supplier 双维度 — qualification(资质) + status(运营态) 各自独立变化 |
+| U2 | PurchaseOrder 状态流转：DRAFT→APPROVED→SENT→RECEIVING→COMPLETED |
+| U3 | PO 明细收货 — receive/receivedQty/remaining/isFullyReceived |
+
+### bi — 看板报表
+
+| # | 任务 |
+|---|------|
+| B1 | 生产看板 — MES 工单进度 + 计划完成率 |
+| B2 | 质量看板 — QMS 一次合格率 + 偏差统计 |
+| B3 | OEE 看板 — Equip 可用率×性能率×质量率 |
+
+### crm — 客户关系（协作层）
+
+| # | 任务 |
+|---|------|
+| CR1 | Customer 注册 — code/name/industry/GMP审计状态。验收：Customer 实体可查询 |
+| CR2 | SalesOrder 状态流转 — 订单确认→排程→生产中→发货→完成 |
+| CR3 | Complaint → QMS CAPA 闭环 — 投诉创建后通知 QMS 创建偏差 |
+
+---
+
 ## 实施顺序（详见 docs/implementation/roadmap.md）
 
 | 阶段 | 模块 | 并行度 | 关键依赖 |
@@ -115,7 +291,7 @@
 | Phase 2 | lims, wms, mps | 3并行 | erp/plm/scm |
 | Phase 3 | **mes**, aps | 串行 | plm+equip+wms+lims |
 | Phase 4 | qms, andon, eam | 2并行 | mes(+iot) |
-| Phase 5 | bi, web, test | 3并行 | 全部 |
+| Phase 5 | bi, web, test, crm | 4并行 | 全部 |
 
 > **mes 是集成枢纽，预计占总工作量 40%+**
 
@@ -125,18 +301,20 @@
 
 ## EAM 模块约定（2026-07-18 建立）
 
+> **包位置说明**: 以下文件位于 core `com.byz.factory.eam` 包（按制造职能分包），非 `com.byz.factory.batch`。
+
 ### Core 层新增（供跨模块引用）
 
 | 类型 | 文件 | 说明 |
 |------|------|------|
-| 接口 | `batch/IAsset.java` | 资产抽象，供 Equip/Andon/ERP/DMS 引用 |
-| 接口 | `batch/IMaintenanceOrder.java` | 维护工单抽象，供 Andon 引用 |
-| 接口 | `batch/ICalibrationRecord.java` | 校准记录抽象，供 DMS 引用 |
-| 状态枚举 | `batch/MaintenanceOrderStatus.java` | OPEN→IN_PROGRESS→COMPLETED→VERIFIED; +CANCELLED |
-| 值枚举 | `batch/MaintenanceType.java` | PREVENTIVE / CORRECTIVE / PREDICTIVE / CALIBRATION |
-| 值枚举 | `batch/MaintenancePriority.java` | LOW / MEDIUM / HIGH / EMERGENCY |
-| 值枚举 | `batch/CalibrationResult.java` | PASS / FAIL / ADJUSTED |
-| 值枚举 | `batch/CalibrationType.java` | INTERNAL / EXTERNAL |
+| 接口 | `eam/IAsset.java` | 资产抽象，供 Equip/Andon/ERP/DMS 引用 |
+| 接口 | `eam/IMaintenanceOrder.java` | 维护工单抽象，供 Andon 引用 |
+| 接口 | `eam/ICalibrationRecord.java` | 校准记录抽象，供 DMS 引用 |
+| 状态枚举 | `eam/MaintenanceOrderStatus.java` | OPEN→IN_PROGRESS→COMPLETED→VERIFIED; +CANCELLED |
+| 值枚举 | `eam/MaintenanceType.java` | PREVENTIVE / CORRECTIVE / PREDICTIVE / CALIBRATION |
+| 值枚举 | `eam/MaintenancePriority.java` | LOW / MEDIUM / HIGH / EMERGENCY |
+| 值枚举 | `eam/CalibrationResult.java` | PASS / FAIL / ADJUSTED |
+| 值枚举 | `eam/CalibrationType.java` | INTERNAL / EXTERNAL |
 
 ### 约定规则
 
@@ -157,11 +335,11 @@ Equip 管理生产设备的工艺参数、设备配方、运行状态和 OEE 效
 
 | 类型 | 文件 | 说明 |
 |------|------|------|
-| 状态枚举 | `batch/MachineStatus.java` | IDLE→RUNNING\|SETUP\|MAINTENANCE / RUNNING→IDLE\|FAULT / FAULT→MAINTENANCE→IDLE |
-| 接口 | `batch/IEquipment.java` | ⭐ 设备台账抽象 = IMachine + ILifecycle<MachineStatus> + 台账字段；供 EAM/MES/APS/Andon 引用 |
-| 接口 | `batch/IEquipmentParameter.java` | ⭐ 工艺参数抽象：设定值/实际值/控制限 + isInControl() default；供 IEquipmentBinding/IEquipmentAction/EngineeringBOM 迁移 |
-| 接口 | `batch/IEquipmentRecipe.java` | ⭐ 设备配方抽象 + IRecipePhase 内嵌接口；供 EngineeringBOM/PLM/IoT 引用 |
-| 接口 | `batch/IOEMetrics.java` | ⭐ OEE 指标抽象：A×P×Q；供 BI/APS/FactoryCapacityProfile 引用 |
+| 状态枚举 | `equip/MachineStatus.java` | IDLE→RUNNING\|SETUP\|MAINTENANCE / RUNNING→IDLE\|FAULT / FAULT→MAINTENANCE→IDLE |
+| 接口 | `equip/IEquipment.java` | ⭐ 设备台账抽象 = IMachine + ILifecycle<MachineStatus> + 台账字段；供 EAM/MES/APS/Andon 引用 |
+| 接口 | `equip/IEquipmentParameter.java` | ⭐ 工艺参数抽象：设定值/实际值/控制限 + isInControl() default；供 IEquipmentBinding/IEquipmentAction/EngineeringBOM 迁移 |
+| 接口 | `equip/IEquipmentRecipe.java` | ⭐ 设备配方抽象 + IRecipePhase 内嵌接口；供 EngineeringBOM/PLM/IoT 引用 |
+| 接口 | `equip/IOEMetrics.java` | ⭐ OEE 指标抽象：A×P×Q；供 BI/APS/FactoryCapacityProfile 引用 |
 | 事件常量 | `event/types/EquipEventTypes.java` | ⭐ 9 个领域事件常量（与 PlmEventTypes 同包，统一在 `com.byz.factory.event.types`） |
 | 接口 | `process/action/IEquipmentAction.java` | 设备动作桥接，参数下发 + 状态检查 + OEE 记录 |
 
@@ -265,9 +443,9 @@ ERP 模块是**外部系统的适配层**，不是领域模型层。其他模块
 
 | 类型 | 文件 | 说明 |
 |------|------|------|
-| 接口 | `batch/IErpTransaction.java` | 事务回传记录抽象，供 MES/WMS/LIMS 创建事务时编译期引用 |
-| 状态枚举 | `batch/TransactionStatus.java` | PENDING→SENT→CONFIRMED / SENT→FAILED→PENDING / PENDING→CANCELLED；实现 `ILifecycle.StatusEnum` |
-| 值枚举 | `batch/TransactionType.java` | GOODS_ISSUE / GOODS_RECEIPT / TRANSFER |
+| 接口 | `erp/IErpTransaction.java` | 事务回传记录抽象，供 MES/WMS/LIMS 创建事务时编译期引用 |
+| 状态枚举 | `erp/TransactionStatus.java` | PENDING→SENT→CONFIRMED / SENT→FAILED→PENDING / PENDING→CANCELLED；实现 `ILifecycle.StatusEnum` |
+| 值枚举 | `erp/TransactionType.java` | GOODS_ISSUE / GOODS_RECEIPT / TRANSFER |
 
 ### ERP 枚举（非跨模块，留在 erp）
 
@@ -305,10 +483,10 @@ SCM 管理上游供应链——供应商主数据、采购订单、来料计划�
 
 | 类型 | 文件 | 说明 |
 |------|------|------|
-| 接口 | `batch/ISupplier.java` | 供应商抽象，供 WMS/QMS/ERP 引用 |
-| 接口 | `batch/IPurchaseOrder.java` | 采购订单抽象（含 IPurchaseOrderItem 嵌套接口），供 WMS/ERP 引用 |
-| 状态枚举 | `batch/PurchaseOrderStatus.java` | DRAFT→APPROVED→SENT→RECEIVING→COMPLETED；+CANCELLED；实现 `ILifecycle.StatusEnum` |
-| 值枚举 | `batch/SupplierStatus.java` | ACTIVE / INACTIVE / BLACKLISTED |
+| 接口 | `scm/ISupplier.java` | 供应商抽象，供 WMS/QMS/ERP 引用 |
+| 接口 | `scm/IPurchaseOrder.java` | 采购订单抽象（含 IPurchaseOrderItem 嵌套接口），供 WMS/ERP 引用 |
+| 状态枚举 | `scm/PurchaseOrderStatus.java` | DRAFT→APPROVED→SENT→RECEIVING→COMPLETED；+CANCELLED；实现 `ILifecycle.StatusEnum` |
+| 值枚举 | `scm/SupplierStatus.java` | ACTIVE / INACTIVE / BLACKLISTED |
 
 ### SCM 模型
 
@@ -320,8 +498,8 @@ SCM 管理上游供应链——供应商主数据、采购订单、来料计划�
 
 ### 约定规则
 
-1. **跨模块接口** — SCM 实体通过 core `batch/` 包中的接口暴露（`ISupplier`、`IPurchaseOrder`）；其他模块通过接口引用 Supplier/PurchaseOrder，无需直接依赖 SCM
-2. **状态枚举** — `PurchaseOrderStatus` 放 core `batch/` 包，实现 `ILifecycle.StatusEnum`；`SupplierStatus` 为纯值枚举（状态变更由管理操作驱动，不走状态机）
+1. **跨模块接口** — SCM 实体通过 core `scm/` 包中的接口暴露（`ISupplier`、`IPurchaseOrder`）；其他模块通过接口引用 Supplier/PurchaseOrder，无需直接依赖 SCM
+2. **状态枚举** — `PurchaseOrderStatus` 放 core `scm/` 包，实现 `ILifecycle.StatusEnum`；`SupplierStatus` 为纯值枚举（状态变更由管理操作驱动，不走状态机）
 3. **模型继承** — 有状态实体（PurchaseOrder）继承 `BaseLifecycleEntity<S>` + 实现 core 接口；无状态记录（Supplier）继承 `BaseEntity` + 实现 core 接口
 4. **IExpand 约定** — `scm.category` / `scm.qualification` / `scm.leadTime` / `scm.onTimeRate` / `scm.qualityRate` / `scm.contacts` 挂载在 Supplier 上；`scm.poNo` / `scm.supplierCode` / `scm.approvedBy` / `scm.expectedDelivery` 挂载在 PurchaseOrder 上
 5. **跨模块协作** — SCM→WMS（来料计划触发收货）、SCM←WMS（收货结果更新 PO 进度）、SCM→ERP（采购成本→应付）、SCM→QMS（供应商批次→来料检 IQC）
@@ -341,11 +519,11 @@ IoT 是 **设备层的适配和采集中枢**——连接 PLC/SCADA/DCS 等工�
 
 | 类型 | 文件 | 说明 |
 |------|------|------|
-| 接口 | `batch/IDeviceConnection.java` | ⭐ 设备连接抽象：设备编码 + 协议 + 端点 + 采集间隔 + 在线判定 default；供 Equip/MES/Andon 引用 |
-| 接口 | `batch/ITagValue.java` | ⭐ 采集标签值抽象 + TagQuality 内嵌枚举(GOOD/BAD/UNCERTAIN)；供 Equip/QMS/MES 引用 |
-| 接口 | `batch/ICommand.java` | ⭐ 设备指令抽象 + CommandType(SET_PARAM/START/STOP/READ/ACK_ALARM) + CommandPriority(HIGH/NORMAL/LOW) 内嵌枚举；供 Equip/MES/Andon 引用 |
-| 接口 | `batch/IAlarmEvent.java` | ⭐ 报警事件抽象 + AlarmSeverity(INFO/WARNING/CRITICAL/EMERGENCY) 内嵌枚举；供 QMS/Andon/MES/EAM 引用 |
-| 状态枚举 | `batch/CommandStatus.java` | QUEUED→SENT→ACKNOWLEDGED→COMPLETED；SENT/ACKNOWLEDGED→FAILED；QUEUED→CANCELLED；实现 ILifecycle.StatusEnum |
+| 接口 | `iot/IDeviceConnection.java` | ⭐ 设备连接抽象：设备编码 + 协议 + 端点 + 采集间隔 + 在线判定 default；供 Equip/MES/Andon 引用 |
+| 接口 | `iot/ITagValue.java` | ⭐ 采集标签值抽象 + TagQuality 内嵌枚举(GOOD/BAD/UNCERTAIN)；供 Equip/QMS/MES 引用 |
+| 接口 | `iot/ICommand.java` | ⭐ 设备指令抽象 + CommandType(SET_PARAM/START/STOP/READ/ACK_ALARM) + CommandPriority(HIGH/NORMAL/LOW) 内嵌枚举；供 Equip/MES/Andon 引用 |
+| 接口 | `iot/IAlarmEvent.java` | ⭐ 报警事件抽象 + AlarmSeverity(INFO/WARNING/CRITICAL/EMERGENCY) 内嵌枚举；供 QMS/Andon/MES/EAM 引用 |
+| 状态枚举 | `iot/CommandStatus.java` | QUEUED→SENT→ACKNOWLEDGED→COMPLETED；SENT/ACKNOWLEDGED→FAILED；QUEUED→CANCELLED；实现 ILifecycle.StatusEnum |
 | 事件常量 | `event/types/IotEventTypes.java` | ⭐ 9 个领域事件常量（与 EquipEventTypes/PlmEventTypes 同包 `com.byz.factory.event.types`） |
 | 动作接口 | `process/action/IDataCollectionAction.java` | ⭐ IoT 数据采集动作桥接（先前已存在；DataTag + AlarmRule + DataCollectionResult） |
 
@@ -367,8 +545,8 @@ IoT 是 **设备层的适配和采集中枢**——连接 PLC/SCADA/DCS 等工�
 
 ### 约定规则
 
-1. **跨模块接口** — IoT 实体通过 core `batch/` 包中的接口暴露（`IDeviceConnection`、`ITagValue`、`ICommand`、`IAlarmEvent`）；其他模块通过接口引用 IoT 数据，无需直接依赖 IoT 模块
-2. **状态机** — `CommandStatus` 放 core `batch/` 包中，实现 `ILifecycle.StatusEnum`；Command 继承 `BaseLifecycleEntity<CommandStatus>` 获得 `transition()` 校验
+1. **跨模块接口** — IoT 实体通过 core `iot/` 包中的接口暴露（`IDeviceConnection`、`ITagValue`、`ICommand`、`IAlarmEvent`）；其他模块通过接口引用 IoT 数据，无需直接依赖 IoT 模块
+2. **状态机** — `CommandStatus` 放 core `iot/` 包中，实现 `ILifecycle.StatusEnum`；Command 继承 `BaseLifecycleEntity<CommandStatus>` 获得 `transition()` 校验
 3. **模型继承** — 有状态实体（Command）继承 `BaseLifecycleEntity<CommandStatus>` + 实现 core 接口；无状态记录（DeviceConnection, TagValue, AlarmEvent）继承 `BaseEntity` + 实现 core 接口
 4. **IExpand 约定** — `iot.protocol` / `iot.endpoint` / `iot.connectionStatus` / `iot.lastHeartbeat` 挂载在 DeviceConnection 上；`iot.tag` / `iot.interval` 挂载在 Resource 上供 TagFilter 提取；`iot.alarm.*` 挂载在 AlarmEvent 上
 5. **业务便捷方法** — Command 对外的语义化方法封装状态转换，调用方不直接操作 `setStatus()`；方法：`markSent()` / `markAcknowledged()` / `markCompleted()` / `markFailed()` / `cancel()`；AlarmEvent 提供 `acknowledge()` / `resolve()` / `addAction()`；DeviceConnection 提供 `heartbeat()` / `isTimedOut()`
@@ -407,9 +585,9 @@ DMS 管理制造运营中的 GMP 受控文档——SOP、批记录、检验报�
 
 | 类型 | 文件 | 说明 |
 |------|------|------|
-| 状态枚举 | `batch/DocumentStatus.java` | DRAFT→UNDER_REVIEW→APPROVED→EFFECTIVE→OBSOLETED；+REJECTED；实现 `ILifecycle.StatusEnum` |
-| 值枚举 | `batch/DocumentCategory.java` | SOP / BATCH_RECORD / INSPECTION / DEVIATION / CAPA / VALIDATION / CALIBRATION |
-| 接口 | `batch/IDocument.java` | ⭐ 文档抽象：编号+标题+类别+版本+状态+生效日期+复审周期；供 LIMS/QMS/PLM/EAM 编译期引用 |
+| 状态枚举 | `dms/DocumentStatus.java` | DRAFT→UNDER_REVIEW→APPROVED→EFFECTIVE→OBSOLETED；+REJECTED；实现 `ILifecycle.StatusEnum` |
+| 值枚举 | `dms/DocumentCategory.java` | SOP / BATCH_RECORD / INSPECTION / DEVIATION / CAPA / VALIDATION / CALIBRATION |
+| 接口 | `dms/IDocument.java` | ⭐ 文档抽象：编号+标题+类别+版本+状态+生效日期+复审周期；供 LIMS/QMS/PLM/EAM 编译期引用 |
 | 事件常量 | `event/types/DmsEventTypes.java` | ⭐ 8 个领域事件常量（与 PlmEventTypes/EquipEventTypes/IotEventTypes 同包 `com.byz.factory.event.types`） |
 
 ### DMS 模型
@@ -428,8 +606,8 @@ DMS 管理制造运营中的 GMP 受控文档——SOP、批记录、检验报�
 
 ### 约定规则
 
-1. **跨模块接口** — DMS 实体通过 core `batch/` 包中的接口暴露（`IDocument`）；其他模块通过接口引用 Document，无需直接依赖 DMS 模块
-2. **状态机** — `DocumentStatus` 放 core `batch/` 包中，实现 `ILifecycle.StatusEnum`；Document 继承 `BaseLifecycleEntity<DocumentStatus>` 获得 `transition()` 校验；状态流转：DRAFT→UNDER_REVIEW→APPROVED→EFFECTIVE→OBSOLETED，驳回路径 UNDER_REVIEW→REJECTED→DRAFT
+1. **跨模块接口** — DMS 实体通过 core `dms/` 包中的接口暴露（`IDocument`）；其他模块通过接口引用 Document，无需直接依赖 DMS 模块
+2. **状态机** — `DocumentStatus` 放 core `dms/` 包中，实现 `ILifecycle.StatusEnum`；Document 继承 `BaseLifecycleEntity<DocumentStatus>` 获得 `transition()` 校验；状态流转：DRAFT→UNDER_REVIEW→APPROVED→EFFECTIVE→OBSOLETED，驳回路径 UNDER_REVIEW→REJECTED→DRAFT
 3. **模型继承** — 有状态实体（Document）继承 `BaseLifecycleEntity<DocumentStatus>` + 实现 core 接口；无状态流程记录（ApprovalWorkflow）继承 `BaseEntity`
 4. **IExpand 约定** — `dms.version` / `dms.category` / `dms.author` / `dms.approvedBy` / `dms.effectiveDate` / `dms.reviewCycle` / `dms.nextReviewDate` / `dms.obsoleteReason` / `dms.rejectionReason` 挂载在 Document 上；`dms.wf.*` 挂载在 ApprovalWorkflow 上
 5. **业务便捷方法** — Document 对外的语义化方法封装状态转换，调用方不直接操作 `setStatus()`；方法：`submitForReview()` / `approve(approvedBy)` / `reject(reason)` / `resubmit()` / `makeEffective(date)` / `obsolete(reason)` / `supersede(reason)` / `createNewVersion(version)`
@@ -468,12 +646,12 @@ LIMS 管理产品配方（物料组成）、配料称量和批记录。配方本
 
 | 类型 | 文件 | 说明 |
 |------|------|------|
-| 状态枚举 | `batch/FormulaStatus.java` | DRAFT→APPROVED→ACTIVE→RETIRED；APPROVED 可退回 DRAFT |
-| 状态枚举 | `batch/WeighingTaskStatus.java` | PENDING→WEIGHING→VERIFIED→COMPLETE |
-| 状态枚举 | `batch/BatchRecordStatus.java` | IN_PROGRESS→REVIEW→APPROVED→ARCHIVED；REVIEW 可退回 IN_PROGRESS |
-| 接口 | `batch/IFormula.java` | ⭐ 配方抽象 + IFormulaPhase 嵌套接口；供 MES/QMS/ERP 编译期引用 |
-| 接口 | `batch/IWeighingTask.java` | ⭐ 称量任务抽象 + IWeighingItem 嵌套接口；供 MES/IoT/QMS 编译期引用 |
-| 接口 | `batch/IBatchRecord.java` | ⭐ 批记录抽象；供 MES/QMS/DMS 编译期引用 |
+| 状态枚举 | `lims/FormulaStatus.java` | DRAFT→APPROVED→ACTIVE→RETIRED；APPROVED 可退回 DRAFT |
+| 状态枚举 | `lims/WeighingTaskStatus.java` | PENDING→WEIGHING→VERIFIED→COMPLETE |
+| 状态枚举 | `lims/BatchRecordStatus.java` | IN_PROGRESS→REVIEW→APPROVED→ARCHIVED；REVIEW 可退回 IN_PROGRESS |
+| 接口 | `lims/IFormula.java` | ⭐ 配方抽象 + IFormulaPhase 嵌套接口；供 MES/QMS/ERP 编译期引用 |
+| 接口 | `lims/IWeighingTask.java` | ⭐ 称量任务抽象 + IWeighingItem 嵌套接口；供 MES/IoT/QMS 编译期引用 |
+| 接口 | `lims/IBatchRecord.java` | ⭐ 批记录抽象；供 MES/QMS/DMS 编译期引用 |
 | 事件常量 | `event/types/LimsEventTypes.java` | ⭐ 9 个领域事件常量（与 DmsEventTypes/EquipEventTypes/IotEventTypes/PlmEventTypes 同包 `com.byz.factory.event.types`） |
 
 ### LIMS 模型
@@ -502,8 +680,8 @@ LIMS 管理产品配方（物料组成）、配料称量和批记录。配方本
 
 ### 约定规则
 
-1. **跨模块接口** — LIMS 实体通过 core `batch/` 包中的接口暴露（`IFormula`、`IWeighingTask`、`IBatchRecord`）；其他模块通过接口引用配方/称量/批记录，无需直接依赖 LIMS 模块
-2. **状态机** — `FormulaStatus`、`WeighingTaskStatus`、`BatchRecordStatus` 放 core `batch/` 包中，实现 `ILifecycle.StatusEnum`；Formula/WeighingTask/BatchRecord 继承 `BaseLifecycleEntity<S>` 获得 `transition()` 校验
+1. **跨模块接口** — LIMS 实体通过 core `lims/` 包中的接口暴露（`IFormula`、`IWeighingTask`、`IBatchRecord`）；其他模块通过接口引用配方/称量/批记录，无需直接依赖 LIMS 模块
+2. **状态机** — `FormulaStatus`、`WeighingTaskStatus`、`BatchRecordStatus` 放 core `lims/` 包中，实现 `ILifecycle.StatusEnum`；Formula/WeighingTask/BatchRecord 继承 `BaseLifecycleEntity<S>` 获得 `transition()` 校验
 3. **模型继承** — 有状态实体（Formula, WeighingTask, BatchRecord）继承 `BaseLifecycleEntity<S>` + 实现 core 接口；无状态明细（WeighingItem）实现 core 嵌套接口
 4. **IExpand 约定** — `lims.formulaCode` / `lims.formulaVersion` / `lims.batchSize` / `lims.status` / `lims.effectiveDate` / `lims.expiryDate` 挂载在 Formula 上；`lims.weighing.formulaCode` / `lims.weighing.workOrderId` / `lims.weighing.batchNo` 挂载在 WeighingTask 上；`lims.batch.*` 挂载在 BatchRecord 上；物料级 `lims.phase` / `lims.additionOrder` / `lims.toleranceMin` / `lims.toleranceMax` 挂载在 Resource 上
 5. **业务便捷方法** — Formula: `submitForApproval()` / `approve(approvedBy)` / `activate()` / `reject(reason)` / `retire(reason)` / `bumpVersion(BumpType)` / `addPhase(phase)`；WeighingTask: `startWeighing()` / `verify()` / `completeWeighing()` / `addItem(item)` + 查询 `getDeviatedItems()`；BatchRecord: `submitForReview()` / `approve(reviewedBy)` / `reject(reason)` / `archive()` + 记录添加 `addProcessRecord/addWeighingTask/addDeviation`
@@ -541,8 +719,8 @@ MPS（主生产计划）根据销售订单、预测需求和库存水平，生�
 
 | 类型 | 文件 | 说明 |
 |------|------|------|
-| 接口 | `batch/IProductionPlan.java` | ⭐ 生产计划抽象 + IPlanItem 嵌套接口；供 MES/APS/ERP 编译期引用 |
-| 接口 | `batch/IDemandSource.java` | ⭐ 需求来源抽象；供 ERP/SCM/APS 编译期引用 |
+| 接口 | `mps/IProductionPlan.java` | ⭐ 生产计划抽象 + IPlanItem 嵌套接口；供 MES/APS/ERP 编译期引用 |
+| 接口 | `mps/IDemandSource.java` | ⭐ 需求来源抽象；供 ERP/SCM/APS 编译期引用 |
 | 事件常量 | `event/types/MpsEventTypes.java` | ⭐ 8 个领域事件常量（与 DmsEventTypes/EquipEventTypes/IotEventTypes/PlmEventTypes/LimsEventTypes 同包 `com.byz.factory.event.types`） |
 
 ### MPS 模型
@@ -562,7 +740,7 @@ MPS（主生产计划）根据销售订单、预测需求和库存水平，生�
 
 ### 约定规则
 
-1. **跨模块接口** — MPS 实体通过 core `batch/` 包中的接口暴露（`IProductionPlan`、`IDemandSource`）；MES 通过 IProductionPlan 获取工单来源计划，APS 通过 IProductionPlan 获取排程输入，ERP 通过 IDemandSource 提供需求数据。PlanItem 实现 IPlanItem 嵌套接口，模式与 IPurchaseOrder.IPurchaseOrderItem 一致
+1. **跨模块接口** — MPS 实体通过 core `mps/` 包中的接口暴露（`IProductionPlan`、`IDemandSource`）；MES 通过 IProductionPlan 获取工单来源计划，APS 通过 IProductionPlan 获取排程输入，ERP 通过 IDemandSource 提供需求数据。PlanItem 实现 IPlanItem 嵌套接口，模式与 IPurchaseOrder.IPurchaseOrderItem 一致
 2. **状态机** — 使用 core 的 `ProductionPlanStatus`（实现 `ILifecycle.StatusEnum`，DRAFT→APPROVED→RELEASED→IN_PROGRESS→COMPLETED→CLOSED；驳回路径 APPROVED→DRAFT）；`transition()` 自动校验非法转换，CLOSED 为终态不可再转换
 3. **模型继承** — 有状态实体（ProductionPlan）继承 `BaseLifecycleEntity<S>` + 实现 core 接口；无状态记录（DemandSource）继承 `BaseEntity` + 实现 core 接口；CapacityCheck 为不可变值 record
 4. **IExpand 约定** — `mps.periodType` / `mps.periodStart` / `mps.periodEnd` / `mps.approvedBy` / `mps.totalQuantity` / `mps.itemCount` 挂载在 ProductionPlan 上；`mps.sourceType` / `mps.referenceNo` / `mps.customer` 挂载在 DemandSource 上
@@ -597,14 +775,14 @@ WMS 管理物料/成品的仓储运作——收货、上架、拣料、发运、
 
 | 类型 | 文件 | 说明 |
 |------|------|------|
-| 接口 | `batch/IStorage.java` | ⭐ 库位抽象：编码+仓库+区域+货架+层+位+存储类型+容量；供 MES/SCM 引用 |
-| 接口 | `batch/IReceipt.java` | ⭐ 收货单抽象 + IReceiptItem 内嵌接口；供 SCM/QMS 引用 |
-| 接口 | `batch/IPickingTask.java` | ⭐ 拣料任务抽象 + IPickingTaskItem 内嵌接口；供 MES/LIMS 引用 |
-| 接口 | `batch/IInventorySnapshot.java` | ⭐ 库存快照抽象：在手/已分配/可用/待检/不合格+有效期；供 ERP/MES 引用 |
-| 状态枚举 | `batch/PickingTaskStatus.java` | PENDING→IN_PROGRESS→PICKED→DELIVERED；+CANCELLED；实现 ILifecycle.StatusEnum |
-| 值枚举 | `batch/StorageType.java` | AMBIENT / COLD / FROZEN / HAZARDOUS |
-| 值枚举 | `batch/PickingType.java` | FULL / STAGED / JIT |
-| 值枚举 | `batch/MaterialStatus.java` | QUARANTINE / RELEASED / REJECTED（用于 ReceiptItem 和库存物料质量状态） |
+| 接口 | `wms/IStorage.java` | ⭐ 库位抽象：编码+仓库+区域+货架+层+位+存储类型+容量；供 MES/SCM 引用 |
+| 接口 | `wms/IReceipt.java` | ⭐ 收货单抽象 + IReceiptItem 内嵌接口；供 SCM/QMS 引用 |
+| 接口 | `wms/IPickingTask.java` | ⭐ 拣料任务抽象 + IPickingTaskItem 内嵌接口；供 MES/LIMS 引用 |
+| 接口 | `wms/IInventorySnapshot.java` | ⭐ 库存快照抽象：在手/已分配/可用/待检/不合格+有效期；供 ERP/MES 引用 |
+| 状态枚举 | `wms/PickingTaskStatus.java` | PENDING→IN_PROGRESS→PICKED→DELIVERED；+CANCELLED；实现 ILifecycle.StatusEnum |
+| 值枚举 | `wms/StorageType.java` | AMBIENT / COLD / FROZEN / HAZARDOUS |
+| 值枚举 | `wms/PickingType.java` | FULL / STAGED / JIT |
+| 值枚举 | `wms/MaterialStatus.java` | QUARANTINE / RELEASED / REJECTED（用于 ReceiptItem 和库存物料质量状态） |
 
 ### WMS 模型
 
@@ -623,8 +801,8 @@ WMS 管理物料/成品的仓储运作——收货、上架、拣料、发运、
 
 ### 约定规则
 
-1. **跨模块接口** — WMS 实体通过 core `batch/` 包中的接口暴露（`IStorage`、`IReceipt`、`IPickingTask`、`IInventorySnapshot`）；其他模块通过接口引用仓储数据，无需直接依赖 WMS 模块
-2. **状态机** — `ReceiptStatus`（已有）、`PickingTaskStatus`（新增）放 core `batch/` 包中，实现 `ILifecycle.StatusEnum`；Receipt/PickingTask 继承 `BaseLifecycleEntity<S>` 获得 `transition()` 校验
+1. **跨模块接口** — WMS 实体通过 core `wms/` 包中的接口暴露（`IStorage`、`IReceipt`、`IPickingTask`、`IInventorySnapshot`）；其他模块通过接口引用仓储数据，无需直接依赖 WMS 模块
+2. **状态机** — `ReceiptStatus`（已有）、`PickingTaskStatus`（新增）放 core `wms/` 包中，实现 `ILifecycle.StatusEnum`；Receipt/PickingTask 继承 `BaseLifecycleEntity<S>` 获得 `transition()` 校验
 3. **模型继承** — 有状态实体（Receipt, PickingTask）继承 `BaseLifecycleEntity<S>` + 实现 core 接口；无状态记录（Storage, InventorySnapshot）继承 `BaseEntity` + 实现 core 接口
 4. **IExpand 约定** — `wms.location` / `wms.warehouse` / `wms.zone` / `wms.rack` / `wms.level` / `wms.position` / `wms.storageType` / `wms.capacity` 挂载在 Storage 上；`wms.receiptNo` / `wms.sourceType` / `wms.referenceNo` / `wms.supplierCode` 挂载在 Receipt 上；`wms.pickingTask` / `wms.workOrderNo` / `wms.batchNo` / `wms.pickingType` 挂载在 PickingTask 上；`wms.materialCode` / `wms.batchNo` / `wms.locationCode` / `wms.expiryDate` / `wms.lastCounted` / `wms.status` 挂载在 InventorySnapshot 上
 5. **业务便捷方法** — Receipt: `receive(receivedBy)` / `complete()` / `close()` / `addItem()` / `acceptItem(materialCode, locationCode)` / `rejectItem(materialCode)` / `isFullyProcessed()`；PickingTask: `start()` / `completePicking()` / `deliver()` / `cancel()` / `addItem()` / `pickItem()` / `isFullyPicked()`；InventorySnapshot: `addStock(qty)` / `removeStock(qty)` / `allocate(qty)` / `deallocate(qty)` / `quarantine(qty)` / `release(qty)` / `reject(qty)` / `count(qty, countedAt)` + 内置负数防护和上限校验
@@ -672,7 +850,7 @@ MES（制造执行系统）是 Phase 3 的**集成枢纽**——基于 core 的�
 
 | 类型 | 文件 | 说明 |
 |------|------|------|
-| 状态枚举 | `batch/ProcessStatus.java` | PENDING→IN_PROGRESS→COMPLETED / IN_PROGRESS→INTERRUPTED→IN_PROGRESS(恢复)；+SKIPPED+CANCELLED；实现 ILifecycle.StatusEnum |
+| 状态枚举 | `batch/ProcessStatus.java` | PENDING→IN_PROGRESS→COMPLETED / IN_PROGRESS→INTERRUPTED→IN_PROGRESS(恢复)；+SKIPPED+CANCELLED；实现 ILifecycle.StatusEnum（放 batch/ 包，与 WorkOrderStatus 同包） |
 | 事件常量 | `event/types/MesEventTypes.java` | ⭐ 10 个领域事件常量（与 PlmEventTypes/EquipEventTypes 等同包 `com.byz.factory.event.types`） |
 
 ### MES 模型
@@ -691,8 +869,8 @@ MES（制造执行系统）是 Phase 3 的**集成枢纽**——基于 core 的�
 
 ### 约定规则
 
-1. **跨模块接口** — MES 核心实体通过 core `batch/` 包中已有接口暴露（`IWorkOrder`）；ProcessRecord 为 MES 内部模型（其他模块通过事件感知工序状态变更）；ActionRecord 实现 `ITraceable` 供 LIMS/QMS 追溯
-2. **状态机** — `WorkOrderStatus`（已有）、`ProcessStatus`（新增）放 core `batch/` 包中，均实现 `ILifecycle.StatusEnum`；MesWorkOrder/ProcessRecord 继承 `BaseLifecycleEntity<S>` 获得 `transition()` 校验
+1. **跨模块接口** — MES 核心实体通过 core `batch/` 包中已有接口暴露（IBatch/ITraceable/IWorkOrder 放 batch/；ProcessStatus 放 batch/）（`IWorkOrder`）；ProcessRecord 为 MES 内部模型（其他模块通过事件感知工序状态变更）；ActionRecord 实现 `ITraceable` 供 LIMS/QMS 追溯
+2. **状态机** — `WorkOrderStatus`（已有）放 core `batch/`；`ProcessStatus`（新增）放 core `batch/`；均实现 `ILifecycle.StatusEnum`；MesWorkOrder/ProcessRecord 继承 `BaseLifecycleEntity<S>` 获得 `transition()` 校验
 3. **模型继承** — 有状态实体（MesWorkOrder, ProcessRecord）继承 `BaseLifecycleEntity<S>` + 实现 core 接口；无状态记录（ActionRecord）继承 `BaseEntity` + 实现 `ITraceable`
 4. **IExpand 约定** — `mes.workOrderNo` / `mes.productCode` / `mes.blueprintVersion` / `mes.formulaCode` / `mes.recipeCode` / `mes.operator` / `mes.batchNo` 挂载在 MesWorkOrder 上；`mes.processRecord.workOrderNo` / `mes.processRecord.processCode` / `mes.processRecord.operator` / `mes.processRecord.interruptedBy` / `mes.processRecord.interruptReason` 挂载在 ProcessRecord 上；`mes.actionRecord.processRecordId` / `mes.actionRecord.actionCode` / `mes.actionRecord.workOrderNo` / `mes.actionRecord.batchNo` / `mes.actionRecord.operator` / `mes.actionRecord.result` 挂载在 ActionRecord 上
 5. **业务便捷方法** — MesWorkOrder: `release(blueprint,operator,plannedStart,plannedEnd,factoryCode)` / `start()` / `complete()` / `close()` / `cancel()` / `isBlueprintVersionFrozen()`；ProcessRecord: `start(operator)` / `interrupt(by,reason)` / `resume()` / `complete()` / `skip()` / `cancel()` / `addAction(ar)`；ActionRecord: `complete(result,beforeSnapshot,afterSnapshot,remark)` / `recordSnapshot(before,after)`
@@ -762,7 +940,7 @@ APS（高级排程系统）在 MPS 确定"生产什么、生产多少、何时�
 
 ### 约定规则
 
-1. **跨模块接口** — APS 的核心状态枚举（ScheduleStatus）放 core `batch/` 包中；事件常量（ApsEventTypes）放 core `event/types/` 包中；Schedule 模型不暴露 core 接口（其他模块通过事件感知排程变更，不做编译期引用）
+1. **跨模块接口** — APS 的核心状态枚举（ScheduleStatus）放 core `batch/` 包中（批次追溯域统一管理）；事件常量（ApsEventTypes）放 core `event/types/` 包中；Schedule 模型不暴露 core 接口（其他模块通过事件感知排程变更，不做编译期引用）
 2. **状态机** — 使用 core 的 `ScheduleStatus`（实现 `ILifecycle.StatusEnum`，DRAFT→OPTIMIZED→DISPATCHED→IN_PROGRESS→COMPLETED；任意非终态→CANCELLED）；`transition()` 自动校验非法转换
 3. **模型继承** — 有状态实体（Schedule）继承 `BaseLifecycleEntity<ScheduleStatus>`；无状态记录（ResourceCalendar, RescheduleTrigger）继承 `BaseEntity`
 4. **IExpand 约定** — `aps.planNo` / `aps.strategy` / `aps.optimizationGoal` / `aps.scheduledDate` / `aps.horizonStart` / `aps.horizonEnd` 挂载在 Schedule 上；`aps.resourceCode` / `aps.resourceType` / `aps.availableFrom` / `aps.availableTo` 挂载在 ResourceCalendar 上
@@ -789,10 +967,25 @@ APS（高级排程系统）在 MPS 确定"生产什么、生产多少、何时�
 
 ---
 
+## CRM 模块（设计文档，待协同）
+
+| 类型 | 说明 |
+|------|------|
+| 定位 | 协作层 — 客户主数据 + 销售订单 + 投诉管理 |
+| 模型 | Customer, SalesOrder, Complaint |
+| 事件 | crm.order.confirmed → MPS / crm.complaint.received → QMS |
+| 状态 | 仅设计文档，无代码 |
+
+---
+
+---
+
 ## 更新记录
 
 | 日期 | 内容 |
 |------|------|
+| 2026-07-19 | **池→线固化裁定**：三层描述体系正式确定；否决能力匹配引擎；core/PLM/Equip/MES/Physical 五会话任务卡列出 |
+| 2026-07-19 | **高层设计**：核心层vs协作层边界 + CRM设计 + 协作协议建立 |
 | 2026-07-19 | **APS 模块约定建立**：1 个 core 新增(ApsEventTypes 5事件) + 5 个模型(Schedule升级+ScheduledTask内嵌类+ResourceCalendar新建+RescheduleTrigger新建+TaskStatus枚举+ResourceType枚举) + SchedulingRule 排程规则引擎(EDD/SPT/CR) + ApsService 接口(5方法) + 63 个测试 |
 | 2026-07-19 | **MES 模块约定建立**：2 个 core 新增(ProcessStatus 枚举 + MesEventTypes 10事件) + 3 个模型(MesWorkOrder升级+ProcessRecord新建+ActionRecord新建) + WorkOrderService 接口扩展(6→11方法) + 32 个测试 |
 | 2026-07-19 | **WMS 模块约定完成**：4 个 core 接口(IStorage/IReceipt/IPickingTask/IInventorySnapshot) + 4 个 core 枚举(PickingTaskStatus/StorageType/PickingType/MaterialStatus) + 4 个模型(Storage重构+Receipt重构+PickingTask新建+InventorySnapshot新建) + WmsService扩展(4→20方法) + 33 个测试 |
@@ -814,3 +1007,4 @@ APS（高级排程系统）在 MPS 确定"生产什么、生产多少、何时�
 | 2026-07-12 | 移除 easy-factory-db（持久化回归各模块） |
 | 2026-07-12 | 8个业务模块骨架创建，编译通过 |
 | 2026-07-12 | 初始创建，core 接口体系完成 |
+| 2026-07-19 | **Core 设计完善 v5**：删除死代码(script/Action/IProcessRoute/ProcessCompatibilityChecker)；新建 10 个模型(IAuditable/AuditTrail/IElectronicSignature/SignatureMeaning/MachineStatus/UOM/IProcessParameter/IMethod/IEnvironment/IBillOfMaterial)；20 个状态枚举全部实现；23 个跨模块接口全部就位；8 个事件类型常量类完整；DomainEventPublisher 前缀匹配+unsubscribe 已修复；IActionModel.execute() 空指针已保护；Noting→Nothing 全局修正；SourceType 扩展至 18 值；计算器泛型化；formatDuration 公共提取；require() 默认值统一；PROJECT_STATUS.md 更新至 v1.0；domain-model.md 更新至 v5；各模块文档追加 AI 协作建议

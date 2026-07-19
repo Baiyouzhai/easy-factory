@@ -48,6 +48,7 @@
     <module>easy-factory-andon</module>
     <module>easy-factory-bi</module>
     <module>easy-factory-scm</module>
+    <module>easy-factory-crm</module>
     <module>easy-factory-dms</module>
     <module>easy-factory-test</module>
     <module>easy-factory-web</module>

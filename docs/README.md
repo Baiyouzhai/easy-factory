@@ -3,9 +3,11 @@
 ## 文档导航
 
 ### 🏗️ 总体设计
-- [项目总体设计](architecture/overview.md) — 项目愿景、领域模型、模块关系、技术选型
+- [项目总体设计](architecture/overview.md) — 项目愿景、DDD 统一语言、模块全景、技术选型
+- [**设计裁定**](architecture/design-decisions.md) — ★ 所有待决策项的最终裁定（各模块会话必读）
 - [领域模型总图](architecture/domain-model.md) — 完整领域模型定义（143 个定义）
-- [**高层级设计裁定**](architecture/design-decisions.md) — ★ 所有模块待决策项的最终裁定 + AI 协作指南
+- [贯穿示例](architecture/walkthrough.md) — 阿莫西林片剂全流程穿通所有模块
+- [数据模型](architecture/data-model.md) — 跨模块 ER 图 + 核心表设计
 
 ### 📦 模块设计
 - [easy-factory-common](architecture/modules/common.md) — 基础数据层
@@ -26,6 +28,7 @@
 - [easy-factory-bi](architecture/modules/bi.md) — 看板与报表
 - [easy-factory-scm](architecture/modules/scm.md) — 供应链管理
 - [easy-factory-dms](architecture/modules/dms.md) — 文档管理（GMP合规）
+- [easy-factory-crm](architecture/modules/crm.md) — 客户关系管理
 
 ### 🔧 实现
 - [实施路线图](implementation/roadmap.md) — 五阶段实施顺序（★ 必读）
@@ -37,6 +40,7 @@
 
 ### 📋 问题反馈
 - [问题反馈模板](feedback/template.md) — Bug 报告、功能需求、设计讨论
+- [协作协议](feedback/collaboration-protocol.md) — 会话间协作反馈流程
 
 ### 📊 项目进度
 - [PROJECT_STATUS.md](../PROJECT_STATUS.md) — 各模块工作状态、待办事项、技术债务
