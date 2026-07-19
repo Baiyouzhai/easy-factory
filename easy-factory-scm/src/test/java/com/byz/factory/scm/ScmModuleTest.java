@@ -1,7 +1,7 @@
 package com.byz.factory.scm;
 
-import com.byz.factory.batch.PurchaseOrderStatus;
-import com.byz.factory.batch.SupplierStatus;
+import com.byz.factory.scm.PurchaseOrderStatus;
+import com.byz.factory.scm.SupplierStatus;
 import com.byz.factory.scm.model.PurchaseOrder;
 import com.byz.factory.scm.model.PurchaseOrderItem;
 import com.byz.factory.scm.model.Supplier;

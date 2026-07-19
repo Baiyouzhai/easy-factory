@@ -69,7 +69,7 @@ MES 不重新定义工序概念，而是通过 `IExpand` 机制在 core 工序�
 ```
 WorkOrder:
 ├── workOrderNo:     工单号
-├── productInfo:     IProductInfoModel (来自 core)
+├── productInfo:     IProductInfo (来自 core)
 ├── quantity:        计划数量
 ├── processes:       工序列表 (来自产品蓝图)
 ├── status:          状态 (Created/Released/Started/Completed/Closed)

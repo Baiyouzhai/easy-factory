@@ -1,8 +1,8 @@
 package com.byz.factory.wms.model;
 
-import com.byz.factory.batch.IReceipt;
-import com.byz.factory.batch.MaterialStatus;
-import com.byz.factory.batch.ReceiptStatus;
+import com.byz.factory.wms.IReceipt;
+import com.byz.factory.wms.MaterialStatus;
+import com.byz.factory.wms.ReceiptStatus;
 import com.byz.factory.shared.BaseLifecycleEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;

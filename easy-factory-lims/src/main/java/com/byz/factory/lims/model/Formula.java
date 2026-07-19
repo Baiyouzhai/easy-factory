@@ -1,7 +1,7 @@
 package com.byz.factory.lims.model;
 
-import com.byz.factory.batch.FormulaStatus;
-import com.byz.factory.batch.IFormula;
+import com.byz.factory.lims.FormulaStatus;
+import com.byz.factory.lims.IFormula;
 import com.byz.factory.event.DomainEventPublisher;
 import com.byz.factory.event.IDomainEvent;
 import com.byz.factory.event.types.LimsEventTypes;

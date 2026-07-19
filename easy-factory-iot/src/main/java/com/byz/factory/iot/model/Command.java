@@ -1,7 +1,7 @@
 package com.byz.factory.iot.model;
 
-import com.byz.factory.batch.CommandStatus;
-import com.byz.factory.batch.ICommand;
+import com.byz.factory.iot.CommandStatus;
+import com.byz.factory.iot.ICommand;
 import com.byz.factory.shared.BaseLifecycleEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;

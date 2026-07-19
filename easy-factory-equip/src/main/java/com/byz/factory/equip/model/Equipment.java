@@ -1,7 +1,7 @@
 package com.byz.factory.equip.model;
 
-import com.byz.factory.batch.IEquipment;
-import com.byz.factory.batch.MachineStatus;
+import com.byz.factory.equip.IEquipment;
+import com.byz.factory.equip.MachineStatus;
 import com.byz.factory.shared.AbstractResourceItem;
 import com.byz.factory.shared.Dict;
 import lombok.Data;

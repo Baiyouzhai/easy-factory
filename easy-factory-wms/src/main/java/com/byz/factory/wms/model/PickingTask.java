@@ -1,8 +1,8 @@
 package com.byz.factory.wms.model;
 
-import com.byz.factory.batch.IPickingTask;
-import com.byz.factory.batch.PickingTaskStatus;
-import com.byz.factory.batch.PickingType;
+import com.byz.factory.wms.IPickingTask;
+import com.byz.factory.wms.PickingTaskStatus;
+import com.byz.factory.wms.PickingType;
 import com.byz.factory.shared.BaseLifecycleEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;

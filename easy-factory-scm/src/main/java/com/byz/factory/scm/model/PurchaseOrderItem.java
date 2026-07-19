@@ -1,6 +1,6 @@
 package com.byz.factory.scm.model;
 
-import com.byz.factory.batch.IPurchaseOrder;
+import com.byz.factory.scm.IPurchaseOrder;
 import lombok.Data;
 
 import java.math.BigDecimal;

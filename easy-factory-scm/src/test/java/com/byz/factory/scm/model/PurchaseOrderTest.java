@@ -1,6 +1,6 @@
 package com.byz.factory.scm.model;
 
-import com.byz.factory.batch.PurchaseOrderStatus;
+import com.byz.factory.scm.PurchaseOrderStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

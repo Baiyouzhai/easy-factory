@@ -1,7 +1,7 @@
 package com.byz.factory.wms.model;
 
-import com.byz.factory.batch.IInventorySnapshot;
-import com.byz.factory.batch.MaterialStatus;
+import com.byz.factory.wms.IInventorySnapshot;
+import com.byz.factory.wms.MaterialStatus;
 import com.byz.factory.shared.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;

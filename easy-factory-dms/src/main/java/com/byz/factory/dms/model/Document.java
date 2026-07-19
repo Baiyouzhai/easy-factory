@@ -1,8 +1,8 @@
 package com.byz.factory.dms.model;
 
-import com.byz.factory.batch.DocumentCategory;
-import com.byz.factory.batch.DocumentStatus;
-import com.byz.factory.batch.IDocument;
+import com.byz.factory.dms.DocumentCategory;
+import com.byz.factory.dms.DocumentStatus;
+import com.byz.factory.dms.IDocument;
 import com.byz.factory.event.DomainEventPublisher;
 import com.byz.factory.event.IDomainEvent;
 import com.byz.factory.event.types.DmsEventTypes;

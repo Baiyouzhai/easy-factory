@@ -1,7 +1,7 @@
 package com.byz.factory.eam.model;
 
-import com.byz.factory.batch.AssetStatus;
-import com.byz.factory.batch.IAsset;
+import com.byz.factory.eam.AssetStatus;
+import com.byz.factory.eam.IAsset;
 import com.byz.factory.shared.BaseLifecycleEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;

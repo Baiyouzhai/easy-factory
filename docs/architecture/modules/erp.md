@@ -13,7 +13,7 @@ ERP 是外部的"权威数据源"，easy-factory 通过适配层消费 ERP 数�
 ### 物料主数据映射
 
 ```
-ERP 物料主数据          core IResourceModel (group=Material)
+ERP 物料主数据          core IResourceItem (group=Material)
 ┌────────────────┐     ┌────────────────────┐
 │ MaterialCode   │────→│ name               │
 │ Description    │     │ (IExpand扩展)       │
@@ -31,7 +31,7 @@ ERP 物料主数据          core IResourceModel (group=Material)
 ERP BOM                core IResourcePack
 ┌────────────────┐     ┌────────────────────┐
 │ ParentMaterial │────→│ 关联产品            │
-│ ComponentItem  │────→│ IResourceModel     │
+│ ComponentItem  │────→│ IResourceItem     │
 │ QtyPerAssembly │────→│ number (数量)       │
 │ ScrapPercent   │────→│ IExpand: lossRate  │
 │ ValidFrom/To   │     │ IExpand: validPeriod│

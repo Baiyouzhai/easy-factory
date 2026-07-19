@@ -67,7 +67,7 @@ easy-factory/
 ### 模块依赖
 
 ```
-common ← core ← (mes, qms, plm, equip, lims, erp, iot) ← web
+common ← core ← (mes, qms, plm, equip, lims, erp, iot, eam, mps, aps, wms, andon, bi, scm, dms) ← web
 ```
 
 ### 包命名
@@ -75,19 +75,20 @@ common ← core ← (mes, qms, plm, equip, lims, erp, iot) ← web
 ```
 com.byz.factory.<module>.<layer>
 
-module: common | core | mes | qms | plm | equip | lims | erp | iot | web
-layer:  model | data | design | script | service | repository | web | config | exception
+module: common | core | mes | qms | plm | equip | lims | erp | iot | eam | mps | aps | wms | andon | bi | scm | dms | web
+layer:  model | service | repository | web | config | exception
 ```
 
 ## 关键设计模式
 
 ### 1. 接口-实现分离
 
-所有领域概念在 core 中以接口定义（`IProcess`, `IAction`, `IResource`），业务模块提供实现。接口之间形成清晰的继承层次：
+所有领域概念在 core 中以接口定义（`IProcess`, `IAction`, `IResource`），业务模块提供实现。
 
 ```
-IResource → IResourceModel → IMaterialsModel / IMachineModel / IPersonnelModel
-IAction   → IActionModel
+IResource → IResourceItem → IMachine / IMaterial / IPersonnel（4M1E 子类型）
+IAction   → IActionModel（脚本化动作）
+BaseEntity → BaseLifecycleEntity<S>（带状态机的实体）
 ```
 
 ### 2. IExpand 扩展属性
@@ -148,10 +149,18 @@ public enum WorkOrderStatus implements ILifecycle.StatusEnum {
 
 ### 9. 跨模块抽象
 
-- `IWorkOrder` — MES 工单抽象（工单号/产品/蓝图/批次/状态）
-- `IInspectionOrder` — QMS 检验指令抽象（检验类型/方案/进度）
-- `IBatch` — 批次追溯核心（批号/收率/状态/追溯记录）
-- `ITraceable` — 追溯接口（谁/何时/在哪批/做了什么）
+core 下按制造职能分包（详见底部 §Core 包结构）。会话通过接口名找到对应包：
+
+- `IBatch`, `ITraceable`, `IWorkOrder`, `IInspectionOrder` → `batch/`
+- `IEquipment`, `IEquipmentParameter`, `IEquipmentRecipe`, `IOEMetrics` → `equip/`
+- `ISupplier`, `IPurchaseOrder` → `scm/`
+- `IFormula`, `IWeighingTask`, `IBatchRecord` → `lims/`
+- `IStorage`, `IReceipt`, `IInventorySnapshot`, `IPickingTask` → `wms/`
+- `IProductionPlan`, `IDemandSource` → `mps/`
+- `IDocument` → `dms/`
+- `ICommand`, `IAlarmEvent`, `ITagValue`, `IDeviceConnection` → `iot/`
+- `IAsset`, `IMaintenanceOrder`, `ICalibrationRecord` → `eam/`
+- `IErpTransaction` → `erp/`
 
 ## 编码约定
 
@@ -161,7 +170,14 @@ public enum WorkOrderStatus implements ILifecycle.StatusEnum {
 - 实现类：接口名去 I（`Process`, `Action`）
 - 枚举：名词（`Dict.SourceGroup`, `BatchStatus`）
 - 异常：`Exception` 后缀（`ActionException`, `ResourceException`）
-- 抽象基类：`Data`, `DataExpand`
+- 抽象基类：`BaseEntity`（无状态）/ `BaseLifecycleEntity<S>`（有状态机）/ `AbstractResourceItem`（4M1E 资源）
+
+**模型继承选择**：
+```
+是 4M1E 资源？ → AbstractResourceItem
+有状态机？     → BaseLifecycleEntity<S>（S 实现 ILifecycle.StatusEnum）
+以上都不是     → BaseEntity
+```
 
 ### 方法
 
@@ -209,7 +225,9 @@ void methodName_condition_expectedResult() {
 | 任务类型 | 必读文档 |
 |---------|---------|
 | 了解全局 | `docs/architecture/overview.md` |
-| 开发新模块 | `docs/architecture/modules/<module>.md` |
+| 了解设计约定 | `docs/architecture/overview.md` §6-7（关键设计决策 + 业务模块设计约定） |
+| 查看已裁定事项 | `docs/architecture/design-decisions.md`（所有待决策项的最终裁定） |
+| 开发新模块 | `docs/architecture/overview.md` §7（约定建立三步） + `docs/architecture/modules/<module>.md` |
 | 理解全流程 | `docs/architecture/walkthrough.md` |
 | 数据库设计 | `docs/architecture/data-model.md` |
 | 编码风格 | `docs/implementation/conventions.md` |
@@ -234,7 +252,7 @@ main                  ← 稳定版本
 <type>(<scope>): <subject>
 
 type:  feat | fix | docs | style | refactor | test | chore
-scope: common | core | mes | qms | plm | equip | lims | erp | iot | web
+scope: common | core | mes | qms | plm | equip | lims | erp | iot | eam | mps | aps | wms | andon | bi | scm | dms | web
 
 示例:
 feat(core): 添加 IBatch 批次接口
@@ -246,12 +264,15 @@ docs(walkthrough): 添加阿莫西林贯穿示例
 
 ### 创建新业务模块
 
-1. 复制 `docs/architecture/modules/mes.md` 作为模板编写模块设计
-2. 创建模块 POM，依赖 `easy-factory-core`
-3. 在父 POM `<modules>` 中注册
-4. 实现 core 接口（model 层），使用 IExpand 挂载扩展属性
-5. 实现 Service 和 Repository
-6. 编写单元测试
+1. 阅读 `docs/architecture/overview.md` §6-7（设计约定+模块约定）、`docs/architecture/design-decisions.md`（已裁定事项）
+2. 在 `docs/architecture/modules/<module>.md` 编写模块设计
+3. 创建模块 POM，依赖 `easy-factory-core`
+4. 在父 POM `<modules>` 中注册
+5. 在 core 创建跨模块接口（放对应领域包：equip/scm/lims/wms/mps/dms/iot/eam/erp）
+6. 实现 model 实体（继承正确基类：决策树见 overview.md §6.6）
+7. 定义 service 接口（事件发布走 Service，不走 Model）
+8. 编写单元测试（Given-When-Then + @DisplayName，覆盖清单见 overview.md §7.4）
+9. 更新 `PROJECT_STATUS.md` 模块约定章节 + 更新记录
 
 ### 修复 core 层
 
@@ -274,3 +295,100 @@ docs(walkthrough): 添加阿莫西林贯穿示例
 1. 在 `docs/README.md` 添加导航链接
 2. 更新 `docs/architecture/overview.md` 中相关章节
 3. 同步到 CLAUDE.md 的"文档索引"
+
+---
+
+## 协作协议
+
+### 会话任务卡（协调者发给开发会话）
+
+```
+处理模块: easy-factory-{module}
+阶段: Phase {n}
+
+必读文档:
+  - docs/architecture/overview.md §6-7（设计约定）
+  - docs/architecture/design-decisions.md（已裁定事项）
+  - docs/architecture/modules/{module}.md（模块设计）
+  - PROJECT_STATUS.md 中该模块的约定章节
+
+产出:
+  1. model 实体 — 继承正确基类 + 实现 core 接口 + 业务便捷方法
+  2. service 接口 — 方法签名完整
+  3. test 测试 — Given-When-Then + @DisplayName 中文
+
+约束:
+  - 事件走 Service 层发布，Model 层不内嵌 publishEvent()
+  - 跨模块接口放 core 对应领域包（非 batch/），内部枚举放模块内
+  - 状态枚举实现 ILifecycle.StatusEnum
+  - 事件常量放 core event/types/{Module}EventTypes，命名 {module}.{entity}.{past_tense}
+
+完成后在 PROJECT_STATUS.md 写入:
+  - 模块约定章节: Core 层新增列表 + 模型表格 + 约定规则 + 待实现清单
+  - 更新记录: 日期 + 内容摘要
+  - 如有待高层审核: 写 [?] 待审核 — {描述}
+  - 如有阻塞: 写 [!] 阻塞 — {原因}
+```
+
+### 协调者验收清单
+
+```
+1. mvn test -pl easy-factory-{module}     ← 模块测试全过
+2. mvn test                                ← 全项目不破
+3. PROJECT_STATUS.md 有更新记录            ← 有记录
+4. 模型继承正确: BaseEntity vs BaseLifecycleEntity vs AbstractResourceItem 决策树
+5. core 接口是否创建在正确的领域包下        ← 见下方包结构
+6. 事件常量是否放 event/types/            ← 命名正确
+```
+
+### 当前实施顺序
+
+```
+Phase 1 ✅ erp, iot, plm, equip, scm, dms  → 6/6 约定建立
+Phase 2 ✅ lims, wms, mps                   → 3/3 约定建立
+Phase 3 🔜 mes, aps                         → MES 是集成枢纽(40%+工作量)
+Phase 4 🔜 qms, andon                       → eam 已在 Phase 1 完成
+Phase 5 🔜 bi, web, test
+```
+
+---
+
+## Core 包结构（v0.1.2）
+
+```
+com.byz.factory
+╔══ 制造语法（与任何模块无关的纯领域语言） ══╗
+║ ├── shared/      共享基类/枚举/工具       ║
+║ ├── resource/    4M1E 资源抽象           ║
+║ ├── process/     工序/动作               ║
+║ │   └── action/  子系统动作扩展接口       ║
+║ ├── factory/     工厂/蓝图/产线          ║
+║ │   └── physical/                       ║
+║ ├── lifecycle/   状态机框架               ║
+║ ├── event/       事件基础设施             ║
+║ │   └── types/   模块事件常量             ║
+║ ├── operation/   分析引擎（时间/产能/匹配） ║
+║ ├── repository/  仓储端口                 ║
+║ ├── script/      脚本引擎                 ║
+║ └── exception/   领域异常                 ║
+╚══════════════════════════════════════════╝
+╔══ 制造职能（模块跨模块接口，按制造职能分包） ══╗
+║ ├── batch/       批次追溯: IBatch, ITraceable, IWorkOrder, IInspectionOrder
+║ ├── equip/       设备管理: IEquipment, IEquipmentParameter, IEquipmentRecipe, IOEMetrics
+║ ├── scm/         供应链: ISupplier, IPurchaseOrder
+║ ├── lims/        配方称量: IFormula, IWeighingTask, IBatchRecord
+║ ├── wms/         仓储: IStorage, IReceipt, IInventorySnapshot, IPickingTask
+║ ├── mps/         计划: IProductionPlan, IDemandSource
+║ ├── dms/         文档: IDocument
+║ ├── iot/         采集: ICommand, IAlarmEvent, ITagValue, IDeviceConnection
+║ ├── eam/         资产: IAsset, IMaintenanceOrder, ICalibrationRecord
+║ └── erp/         ERP适配: IErpTransaction
+╚══════════════════════════════════════════╝
+```
+
+**关键规则**：
+- 制造语法包（上半）= 与任何模块无关，定义制造系统的基础语言
+- 制造职能包（下半）= 具体模块的跨模块契约，按制造职能命名而非模块名
+- 状态枚举和值枚举与它们的接口放在同一个包
+- 事件常量统一放 `event/types/{Module}EventTypes`，命名 `{module}.{entity}.{past_tense}`
+- 接口只暴露 getter，不暴露 setter 和业务方法

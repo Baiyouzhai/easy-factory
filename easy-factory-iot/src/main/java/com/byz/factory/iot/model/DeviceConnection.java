@@ -1,6 +1,6 @@
 package com.byz.factory.iot.model;
 
-import com.byz.factory.batch.IDeviceConnection;
+import com.byz.factory.iot.IDeviceConnection;
 import com.byz.factory.shared.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;

@@ -1,7 +1,7 @@
 package com.byz.factory.mps.model;
 
-import com.byz.factory.batch.IProductionPlan;
-import com.byz.factory.batch.ProductionPlanStatus;
+import com.byz.factory.mps.IProductionPlan;
+import com.byz.factory.mps.ProductionPlanStatus;
 import com.byz.factory.event.DomainEventPublisher;
 import com.byz.factory.event.IDomainEvent;
 import com.byz.factory.event.types.MpsEventTypes;

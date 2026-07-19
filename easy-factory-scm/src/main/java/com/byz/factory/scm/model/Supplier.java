@@ -1,7 +1,7 @@
 package com.byz.factory.scm.model;
 
-import com.byz.factory.batch.ISupplier;
-import com.byz.factory.batch.SupplierStatus;
+import com.byz.factory.scm.ISupplier;
+import com.byz.factory.scm.SupplierStatus;
 import com.byz.factory.shared.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;

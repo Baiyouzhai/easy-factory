@@ -1,6 +1,6 @@
 package com.byz.factory.equip.model;
 
-import com.byz.factory.batch.IEquipmentParameter;
+import com.byz.factory.equip.IEquipmentParameter;
 import com.byz.factory.shared.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;

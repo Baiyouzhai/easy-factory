@@ -1,7 +1,7 @@
 package com.byz.factory.erp.model;
 
-import com.byz.factory.batch.TransactionStatus;
-import com.byz.factory.batch.TransactionType;
+import com.byz.factory.erp.TransactionStatus;
+import com.byz.factory.erp.TransactionType;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

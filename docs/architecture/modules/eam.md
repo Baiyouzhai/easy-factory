@@ -106,24 +106,42 @@ EAM → ERP:    设备折旧 → 财务成本归集
 
 ## 遗留问题
 
+### 当前实现（2026-07-19 更新）
+- [x] `Asset` — 实现 `IAsset`，`BaseLifecycleEntity<AssetStatus>`，含 `IDLE→IN_USE→UNDER_MAINTENANCE→SCRAPPED`
+- [x] `MaintenanceOrder` — 实现 `IMaintenanceOrder`，`BaseLifecycleEntity<MaintenanceOrderStatus>`，含 `OPEN→IN_PROGRESS→COMPLETED→VERIFIED`
+- [x] `CalibrationRecord` — 实现 `ICalibrationRecord`，`BaseEntity`，含校准类型/标准/结果/证书
+- [x] `EamService` — 接口已定义（资产管理 + 维护工单 + 校准记录，10 方法）
+- [x] `AssetStatus` / `MaintenanceOrderStatus` / `MaintenanceType` / `MaintenancePriority` / `CalibrationResult` / `CalibrationType` — 枚举（core `batch/`）
+- [x] `IAsset` / `IMaintenanceOrder` / `ICalibrationRecord` — 跨模块接口（core `batch/`）
+- [x] 单元测试 — `EamModuleTest`（8 个测试）
+- [ ] 维护计划自动生成 + 备件管理
+- [ ] EamService 实现类
+
+### Core 接口引用
+
+| 接口 | 位置 | 说明 |
+|------|------|------|
+| `IAsset` | core `batch/` | 固定资产编码/设备关联/折旧 |
+| `IMaintenanceOrder` | core `batch/` | 维护类型/优先级/停机时间/成本 |
+| `ICalibrationRecord` | core `batch/` | 校准类型/标准/结果/证书 |
+| `AssetStatus` | core `batch/` | IDLE/IN_USE/UNDER_MAINTENANCE/SCRAPPED |
+| `MaintenanceOrderStatus` | core `batch/` | OPEN→IN_PROGRESS→COMPLETED→VERIFIED (+CANCELLED) |
+| `MaintenanceType` | core `batch/` | PREVENTIVE/CORRECTIVE/PREDICTIVE/CALIBRATION |
+
+### 制造标准背景
+
+| 标准 | 体现 |
+|------|------|
+| **ISO 14224** | 设备可靠性数据采集标准 → `MaintenanceOrder` 的故障记录(type/cost/downtime) |
+| **ISO 10012** | 测量设备校准周期确定 → `CalibrationRecord` 的 `nextDue` 字段 |
+| **TPM** | 全面生产维护（自主维护+计划维护+质量维护）→ `MaintenanceType.PREVENTIVE/CORRECTIVE/PREDICTIVE` |
+| **RCM** | 以可靠性为中心的维护策略 → `MaintenancePriority` 分级(HIGH/MEDIUM/LOW/EMERGENCY) |
+
 ### 待决策
-1. EAM 与 Equip 是否需要物理拆分，还是合并为一个模块？当前 Equip 偏"工艺"，EAM 偏"资产"，逻辑上可分
+1. EAM 与 Equip 是否需要物理拆分：已决策 **保持分离**（EAM 偏资产财务，Equip 偏工艺运行）
 2. 预防性维护的触发条件：按日历周期还是按运行小时数？
-3. 备件管理是否纳入 EAM 还是独立为 WMS（仓储管理）模块？
+3. 备件管理是否纳入 EAM 还是独立为 WMS 模块？
 4. 与财务系统的对接深度：折旧计算在 EAM 还是 ERP？
 
-## AI 协作建议（2026-07-18）
-
-EAM 管理资产的财务/管理视角——与 EQUIP（操作视角）互补。
-
-### 推荐实施
-
-1. **使用 AssetStatus 状态机** — core 已定义 `AssetStatus`（IDLE/IN_USE/UNDER_MAINTENANCE/SCRAPPED）实现 `ILifecycle.StatusEnum`。`Asset` 继承 `BaseLifecycleEntity<AssetStatus>` 即可获得状态转换校验。
-
-2. **与 MachineStatus 的关系** — EAM 的 `AssetStatus` 是财务/管理状态，EQUIP 的 `MachineStatus` 是操作状态。两者独立但可关联：
-   - Asset.IDLE ↔ Machine.IDLE
-   - Asset.IN_USE ↔ Machine.RUNNING
-   - Asset.UNDER_MAINTENANCE ↔ Machine.MAINTENANCE
-
-3. **审计追踪** — 资产状态变更（如报废）应通过 core 的 `AuditTrail` 记录。
+> **最后更新**: 2026-07-19
 

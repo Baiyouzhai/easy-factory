@@ -1,6 +1,6 @@
 package com.byz.factory.mps.model;
 
-import com.byz.factory.batch.IDemandSource;
+import com.byz.factory.mps.IDemandSource;
 import com.byz.factory.shared.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;

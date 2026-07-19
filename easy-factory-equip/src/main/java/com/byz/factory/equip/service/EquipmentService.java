@@ -1,6 +1,6 @@
 package com.byz.factory.equip.service;
 
-import com.byz.factory.batch.MachineStatus;
+import com.byz.factory.equip.MachineStatus;
 import com.byz.factory.equip.model.Equipment;
 import com.byz.factory.equip.model.EquipmentParameter;
 import com.byz.factory.equip.model.EquipmentRecipe;

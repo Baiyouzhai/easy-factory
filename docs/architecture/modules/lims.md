@@ -25,7 +25,7 @@
 ### 配方中每个资源的扩展
 
 ```java
-// IResourceModel IExpand 扩展字段
+// IResourceItem IExpand 扩展字段
 // "lims.phase"            → 投料阶段 (Phase1/Phase2/...)
 // "lims.additionOrder"    → 投料顺序
 // "lims.additionMethod"   → 投料方式 (一次性/滴加/分批)
@@ -168,33 +168,45 @@ LIMS ← ERP:   物料批次信息
 
 ## 遗留问题
 
-### 当前实现
-- [x] `Formula` — 配方基础模型
-- [x] `FormulaService` — 接口已定义
-- [ ] 称量任务 (WeighingTask) — 未创建
-- [ ] 批记录生成 — 未实现
-- [ ] 称量防错脚本 — 示例脚本存在但未与 FormulaService 集成
+### 当前实现（2026-07-19 更新）
+- [x] `Formula` — 实现 `IFormula` + `HasVersion`，`BaseLifecycleEntity<FormulaStatus>`，含 `submitForApproval()`/`approve()`/`activate()`/`retire()`/`reject()` 业务方法 + 领域事件发布 + `FormulaPhase` 内嵌类
+- [x] `WeighingTask` — 实现 `IWeighingTask`，`BaseLifecycleEntity<WeighingTaskStatus>`，含 `startWeighing()`/`verify()`/`completeWeighing()` + 偏差检测 + 事件发布
+- [x] `WeighingItem` — 实现 `IWeighingTask.IWeighingItem`，含 `recordWeighing()`/`getDeviationPercent()`/`isOutOfTolerance()`
+- [x] `BatchRecord` — 实现 `IBatchRecord`，`BaseLifecycleEntity<BatchRecordStatus>`，含 `submitForReview()`/`approve()`/`reject()`/`archive()` + 记录添加方法
+- [x] `FormulaService` / `WeighingTaskService` / `BatchRecordService` — 接口已定义
+- [x] `FormulaStatus` / `WeighingTaskStatus` / `BatchRecordStatus` — 状态枚举（core `batch/`）
+- [x] `IFormula`(含 `IFormulaPhase`) / `IWeighingTask`(含 `IWeighingItem`) / `IBatchRecord` — 跨模块接口（core `batch/`）
+- [x] `LimsEventTypes` — 9 个事件常量（core `event/types/`）
+- [x] 单元测试 — `LimsModuleTest`（47 个测试，覆盖全部模型+事件）
+- [ ] 称量防错脚本 — 示例脚本存在（`weighing_check.js`）但未与 FormulaService 集成
+- [ ] FormulaService / WeighingTaskService / BatchRecordService 实现类
+
+### Core 接口引用
+
+| 接口 | 位置 | 说明 |
+|------|------|------|
+| `IFormula` | core `batch/` | 配方抽象 + 内嵌 `IFormulaPhase` |
+| `IWeighingTask` | core `batch/` | 称量任务抽象 + 内嵌 `IWeighingItem` |
+| `IBatchRecord` | core `batch/` | 批记录抽象 |
+| `FormulaStatus` | core `batch/` | DRAFT/APPROVED/ACTIVE/RETIRED |
+| `WeighingTaskStatus` | core `batch/` | PENDING/WEIGHING/VERIFIED/COMPLETE |
+| `BatchRecordStatus` | core `batch/` | IN_PROGRESS/REVIEW/APPROVED/ARCHIVED |
+
+### 制造标准背景
+
+LIMS 在制药行业的核心合规依据：
+
+| 标准 | 体现 |
+|------|------|
+| **USP<41>/<1251>** | 称量天平精度选择（最小称量值=重复性×安全因子），`WeighingItem.balance` + `tolerance` 字段 |
+| **ICH Q1A** | 稳定性考察 → 有效期管理，`Formula` 的 `lims.effectiveDate`/`lims.expiryDate` |
+| **ISO 17025** | 校准溯源 → 天平定期校准，EAM 的 `ICalibrationRecord` 联动 |
+| **GMP §211.188** | 批记录完整性 → `BatchRecord` 含工序记录+称量+检验+偏差 |
 
 ### 待决策
 1. 配方版本变更后，已创建的称量任务如何处理？（关联旧版本还是自动升级？）
 2. 称量数据来源：天平串口直连还是 IoT 网关？
 3. 批记录是实时生成（边做边记）还是批完成后统一生成？
 
-## AI 协作建议（2026-07-18）
-
-LIMS 管理配方和称量——与 MES 的物料追溯紧密集成。
-
-### 推荐实施
-
-1. **使用 IResourcePack 管理配方** — core 的 `IResourcePack`（merge/compress/copy）天然适合配方管理。`Formula` 应将其组件存储为 `IResourcePack`，每个 `IResourceItem` 附带 `getUom()`（KG/G/MG 等）。
-
-2. **批次集成** — 称量任务关联 core 的 `IBatch`。称量完成后，通过 `ITraceable` 记录 before/after 物料快照。
-
-3. **称量防错** — 使用 `IConstrainedTimed.checkConstraints()` 校验称量时间窗。使用 `IProcessParameter`（targetValue + 上下限）校验称量精度。
-
-4. **IExpand 约定**：
-   ```
-   process.set("lims.formulaCode", "F-AMX-v3");
-   process.set("lims.weighingOrderId", "WO-001");
-   ```
+> **最后更新**: 2026-07-19
 

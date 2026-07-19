@@ -1,6 +1,6 @@
 package com.byz.factory.erp.service;
 
-import com.byz.factory.batch.TransactionType;
+import com.byz.factory.erp.TransactionType;
 import com.byz.factory.erp.model.InventorySnapshot;
 import com.byz.factory.erp.model.MaterialCache;
 import com.byz.factory.erp.model.Transaction;

@@ -1,9 +1,9 @@
 package com.byz.factory.mps;
 
-import com.byz.factory.batch.IDemandSource;
-import com.byz.factory.batch.IProductionPlan;
-import com.byz.factory.batch.IProductionPlan.IPlanItem;
-import com.byz.factory.batch.ProductionPlanStatus;
+import com.byz.factory.mps.IDemandSource;
+import com.byz.factory.mps.IProductionPlan;
+import com.byz.factory.mps.IProductionPlan.IPlanItem;
+import com.byz.factory.mps.ProductionPlanStatus;
 import com.byz.factory.event.types.MpsEventTypes;
 import com.byz.factory.mps.model.CapacityCheck;
 import com.byz.factory.mps.model.CapacityCheck.CapacityResult;

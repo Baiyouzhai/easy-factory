@@ -9,7 +9,7 @@
 ### 设备作为资源
 
 ```java
-// IMachineModel extends IResourceModel (core 中已定义)
+// IMachine extends IResourceItem (core 中已定义)
 // IExpand 扩展字段
 // "equip.code"           → 设备编号
 // "equip.model"          → 设备型号
@@ -157,51 +157,48 @@ Equip → QMS:   设备参数数据 → SPC分析
 - OEE记录表 (equip_oee_metrics)
 - 设备运行日志表 (equip_runtime_log)
 
-## 遗留问题
+## 实现状态（2026-07-19 更新）
 
-### 当前实现
-- [x] `Equipment` — 实现 IMachineModel
-- [x] `EquipmentService` — 接口已定义
-- [ ] 设备配方 (EquipmentRecipe) — 未创建
-- [ ] OEE 计算逻辑 — 未实现
-- [ ] 设备参数实时监控 — 未接入 IoT
+### 已完成
+- [x] `Equipment` — 实现 `IEquipment`（⭐ = IMachine + ILifecycle\<MachineStatus\> + 台账字段），`AbstractResourceItem` 继承，7 个业务便捷方法
+- [x] `EquipmentParameter` — 实现 `IEquipmentParameter`，`BaseEntity`，含 `updateActual()`；`isInControl()` 由接口 default 提供
+- [x] `EquipmentRecipe` — 实现 `IEquipmentRecipe`，`BaseEntity`，含 `RecipePhase implements IRecipePhase` + `bumpVersion()`
+- [x] `OEMetrics` — 实现 `IOEMetrics`，`BaseEntity`，工厂方法 `of()` + `toPercentString()`
+- [x] `EquipmentService` — 接口已定义（16 方法：台账+状态+配方+参数+OEE）
+- [x] `EquipEventTypes` — 9 个事件常量（core `event/types/`），含订阅指南
+- [x] `IEquipment` / `IEquipmentParameter` / `IEquipmentRecipe`(含 `IRecipePhase`) / `IOEMetrics` — 跨模块接口（core `batch/`）
+- [x] 单元测试 — `EquipModuleTest`（43 个测试）
+- [ ] EquipmentService 实现类 + IEquipmentAction 桥接
+- [ ] IoT 参数实时监控
+
+### Core 接口回归引用
+
+| 接口 | 位置 | 说明 |
+|------|------|------|
+| `IEquipment` | core `batch/` | = IMachine + ILifecycle\<MachineStatus\> + model/category/location/assetCode |
+| `IEquipmentParameter` | core `batch/` | setValue/actualValue/upperLimit/lowerLimit + `isInControl()` default |
+| `IEquipmentRecipe` | core `batch/` | 设备配方 + 内嵌 `IRecipePhase` |
+| `IOEMetrics` | core `batch/` | OEE = A×P×Q |
+| `MachineStatus` | core `batch/` | IDLE→RUNNING\|SETUP\|MAINTENANCE → FAULT→MAINTENANCE→IDLE |
+
+### 制造标准背景
+
+| 标准 | 体现 |
+|------|------|
+| **OEE 六大损失** | 设备故障/换型调整/空转暂停/减速运行/启动废品/过程废品 → `OEMetrics` + `downtimeEvents` |
+| **TPM 八大支柱** | 自主维护/计划维护/质量维护/教育训练/初期管理/间接部门/安全环境 → `MaintenanceType`(EAM) + `Equipment` 状态机 |
+| **设备层次** | Plant→Line→Machine→Unit→Component → `IFactory`→`IProductionLine`→`Equipment` |
+
+### 已决策
+1. ✅ 设备状态机升级 — 已升级为 `MachineStatus`（`ILifecycle.StatusEnum`），`Equipment implements IEquipment`（= IMachine + ILifecycle）
+2. ✅ 设备配方 vs LIMS 配方 — 不同概念：Equip Recipe 管设备参数（温度/转速），LIMS Formula 管物料配比（克/千克）
+3. ✅ Equip→Core 回归 — 5 个接口回归 core，EquipEventTypes 迁入 `event/types/`，审核已通过
+4. ✅ EngineeringBOM 引用 Recipe — A+B 方案（可选 recipeCode + 副本 fallback）
+5. ✅ FactoryCapacityProfile 双轨 — 规划用静态 OEE 因子，执行后用 IOEMetrics 修正
 
 ### 待决策
-1. 设备配方与 LIMS 配方是什么关系？同一概念还是不同？
-2. OEE 的六大损失如何采集？手动录入还是 IoT 自动？
-3. 设备状态变更是否需要审批流程？
+1. OEE 的六大损失如何采集？手动录入还是 IoT 自动？
+2. 设备状态变更是否需要审批流程？
 
-## AI 协作建议（2026-07-18）
-
-EQUIP 是物理层设备管理的核心实现。core 已新增 `MachineStatus` 状态机和 `IEquipmentAction` 桥接路径。
-
-### 推荐实施顺序
-
-1. **升级设备状态机** — `Equipment.Status`（IDLE/RUNNING/MAINTENANCE/FAULT/OFFLINE）是普通枚举，无状态校验。应升级为使用 core 的 `MachineStatus`（实现 `ILifecycle.StatusEnum`），获得完整的状态转换校验：
-   ```
-   IDLE→RUNNING|SETUP|MAINTENANCE / RUNNING→IDLE|FAULT / FAULT→MAINTENANCE→IDLE
-   ```
-   可通过 `BaseLifecycleEntity<MachineStatus>` 获得 `transition()` 校验。
-
-2. **桥接 IEquipmentAction** — 实现类应覆盖 `execute()` 桥接：
-   ```java
-   @Override
-   public IResourcePack execute(IProcess process, IResourceItem... resources) {
-       IResourcePack result = IActionModel.super.execute(process, resources);
-       EquipmentActionResult eqResult = executeEquipment(result);
-       process.set("equip.lastResult", eqResult);  // 挂入动态属性
-       return result;
-   }
-   ```
-
-3. **对接匹配引擎** — `EquipmentBinding.supportedActionCodes` 是匹配的唯一依据。确保设备注册时正确声明支持的动作编码集合。`DirectEquipmentStrategy` 和 `LineFirstStrategy` 都依赖此声明。
-
-4. **OEE 计算接入** — core 的 `FactoryCapacityProfile` 已定义 OEE 模型（日可用时间 × OEE 系数）。EQUIP 的 `OEMetrics` 应向 `FactoryCapacityProfile` 提供实际数据。
-
-5. **IExpand 动态属性约定**：
-   ```
-   resource.set("equip.status", "RUNNING");
-   resource.set("equip.oee", "0.85");
-   resource.set("equip.nextMaintenanceDate", "2026-08-01");
-   ```
+> **最后更新**: 2026-07-19
 

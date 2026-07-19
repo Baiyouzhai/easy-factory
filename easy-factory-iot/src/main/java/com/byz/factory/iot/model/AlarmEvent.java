@@ -1,6 +1,6 @@
 package com.byz.factory.iot.model;
 
-import com.byz.factory.batch.IAlarmEvent;
+import com.byz.factory.iot.IAlarmEvent;
 import com.byz.factory.shared.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;

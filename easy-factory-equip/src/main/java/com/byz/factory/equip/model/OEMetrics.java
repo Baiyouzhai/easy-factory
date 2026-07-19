@@ -1,6 +1,6 @@
 package com.byz.factory.equip.model;
 
-import com.byz.factory.batch.IOEMetrics;
+import com.byz.factory.equip.IOEMetrics;
 import com.byz.factory.shared.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;

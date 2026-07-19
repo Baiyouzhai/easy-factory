@@ -1,8 +1,8 @@
 package com.byz.factory.eam.model;
 
-import com.byz.factory.batch.CalibrationResult;
-import com.byz.factory.batch.CalibrationType;
-import com.byz.factory.batch.ICalibrationRecord;
+import com.byz.factory.eam.CalibrationResult;
+import com.byz.factory.eam.CalibrationType;
+import com.byz.factory.eam.ICalibrationRecord;
 import com.byz.factory.shared.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;

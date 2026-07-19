@@ -1,7 +1,7 @@
 package com.byz.factory.lims.model;
 
-import com.byz.factory.batch.IWeighingTask;
-import com.byz.factory.batch.WeighingTaskStatus;
+import com.byz.factory.lims.IWeighingTask;
+import com.byz.factory.lims.WeighingTaskStatus;
 import com.byz.factory.event.DomainEventPublisher;
 import com.byz.factory.event.IDomainEvent;
 import com.byz.factory.event.types.LimsEventTypes;

@@ -1,9 +1,9 @@
 package com.byz.factory.eam.model;
 
-import com.byz.factory.batch.IMaintenanceOrder;
-import com.byz.factory.batch.MaintenanceOrderStatus;
-import com.byz.factory.batch.MaintenancePriority;
-import com.byz.factory.batch.MaintenanceType;
+import com.byz.factory.eam.IMaintenanceOrder;
+import com.byz.factory.eam.MaintenanceOrderStatus;
+import com.byz.factory.eam.MaintenancePriority;
+import com.byz.factory.eam.MaintenanceType;
 import com.byz.factory.shared.BaseLifecycleEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;

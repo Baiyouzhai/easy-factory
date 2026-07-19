@@ -1,6 +1,6 @@
 package com.byz.factory.equip;
 
-import com.byz.factory.batch.MachineStatus;
+import com.byz.factory.equip.MachineStatus;
 import com.byz.factory.event.types.EquipEventTypes;
 import com.byz.factory.equip.model.*;
 import com.byz.factory.shared.Dict;

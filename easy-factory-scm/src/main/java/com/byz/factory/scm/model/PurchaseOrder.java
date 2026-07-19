@@ -1,7 +1,7 @@
 package com.byz.factory.scm.model;
 
-import com.byz.factory.batch.IPurchaseOrder;
-import com.byz.factory.batch.PurchaseOrderStatus;
+import com.byz.factory.scm.IPurchaseOrder;
+import com.byz.factory.scm.PurchaseOrderStatus;
 import com.byz.factory.shared.BaseLifecycleEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;

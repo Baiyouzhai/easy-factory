@@ -36,7 +36,7 @@ boolean hasResources();
 void createWorkOrder(WorkOrder order);
 void addAction(IProcess process, IActionModel action);
 void updateStatus(Status status);
-IResourcePack execute(IResourceModel... input);
+IResourcePack execute(IResourceItem... input);
 
 // 转换: to / from / convert / map
 Map<String, Object> toMap();
@@ -54,7 +54,7 @@ public interface IProcess {
     String getCode();
     String getName();
     List<IActionModel> getActions();
-    IResourcePack execute(IResourceModel... input);
+    IResourcePack execute(IResourceItem... input);
 }
 
 // ❌ 差：接口臃肿
@@ -71,14 +71,14 @@ public interface IEverything {
 ```java
 // ✅ 好：接口只定义契约
 public interface IResourcePack {
-    List<IResourceModel> getResources();
+    List<IResourceItem> getResources();
     void compress();
 }
 
 // ❌ 差：接口中暴露 collection 实现
 public interface IResourcePack {
-    ArrayList<IResourceModel> getResources();  // 绑定了 ArrayList
-    HashMap<String, IResourceModel> getResourceMap();  // 暴露内部结构
+    ArrayList<IResourceItem> getResources();  // 绑定了 ArrayList
+    HashMap<String, IResourceItem> getResourceMap();  // 暴露内部结构
 }
 ```
 
@@ -86,7 +86,7 @@ public interface IResourcePack {
 
 ```java
 // Java 8+ 可以在接口中提供默认实现
-public interface IResourceModel {
+public interface IResourceItem {
     String getName();
     BigDecimal getNumber();
 
@@ -328,5 +328,5 @@ void processExecute_shouldAccumulateResources() {
  * @throws ActionException 如果某个动作执行失败
  * @throws ResourceException 如果输入资源不满足动作要求
  */
-IResourcePack execute(IResourceModel... inputResources);
+IResourcePack execute(IResourceItem... inputResources);
 ```

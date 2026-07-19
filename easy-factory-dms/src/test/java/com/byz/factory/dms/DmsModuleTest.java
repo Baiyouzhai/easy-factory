@@ -1,7 +1,7 @@
 package com.byz.factory.dms;
 
-import com.byz.factory.batch.DocumentCategory;
-import com.byz.factory.batch.DocumentStatus;
+import com.byz.factory.dms.DocumentCategory;
+import com.byz.factory.dms.DocumentStatus;
 import com.byz.factory.dms.model.ApprovalStep;
 import com.byz.factory.dms.model.ApprovalStep.ApprovalDecision;
 import com.byz.factory.dms.model.ApprovalWorkflow;

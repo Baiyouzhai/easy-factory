@@ -1,7 +1,7 @@
 package com.byz.factory.wms.model;
 
-import com.byz.factory.batch.IStorage;
-import com.byz.factory.batch.StorageType;
+import com.byz.factory.wms.IStorage;
+import com.byz.factory.wms.StorageType;
 import com.byz.factory.shared.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;

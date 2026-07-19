@@ -1,6 +1,6 @@
 package com.byz.factory.lims.model;
 
-import com.byz.factory.batch.IWeighingTask;
+import com.byz.factory.lims.IWeighingTask;
 import lombok.Data;
 
 import java.math.BigDecimal;

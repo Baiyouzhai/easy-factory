@@ -1,8 +1,8 @@
 package com.byz.factory.erp.model;
 
-import com.byz.factory.batch.IErpTransaction;
-import com.byz.factory.batch.TransactionStatus;
-import com.byz.factory.batch.TransactionType;
+import com.byz.factory.erp.IErpTransaction;
+import com.byz.factory.erp.TransactionStatus;
+import com.byz.factory.erp.TransactionType;
 import com.byz.factory.shared.BaseLifecycleEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;

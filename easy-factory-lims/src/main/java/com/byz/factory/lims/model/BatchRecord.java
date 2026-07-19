@@ -1,7 +1,7 @@
 package com.byz.factory.lims.model;
 
-import com.byz.factory.batch.BatchRecordStatus;
-import com.byz.factory.batch.IBatchRecord;
+import com.byz.factory.lims.BatchRecordStatus;
+import com.byz.factory.lims.IBatchRecord;
 import com.byz.factory.event.DomainEventPublisher;
 import com.byz.factory.event.IDomainEvent;
 import com.byz.factory.event.types.LimsEventTypes;

@@ -110,7 +110,7 @@ public interface IBlueprintDiffer {
 - 新增/删除/重排工序
 - 动作变更（脚本修改、资源调整）
 - 工艺参数调整
-- 资源定额变更（IEstimateResourceModel）
+- 资源定额变更（IEstimateResource）
 
 ## 外部接口
 

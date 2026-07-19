@@ -4,6 +4,8 @@
 
 ### 🏗️ 总体设计
 - [项目总体设计](architecture/overview.md) — 项目愿景、领域模型、模块关系、技术选型
+- [领域模型总图](architecture/domain-model.md) — 完整领域模型定义（143 个定义）
+- [**高层级设计裁定**](architecture/design-decisions.md) — ★ 所有模块待决策项的最终裁定 + AI 协作指南
 
 ### 📦 模块设计
 - [easy-factory-common](architecture/modules/common.md) — 基础数据层

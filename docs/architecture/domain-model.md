@@ -1,7 +1,7 @@
 # 领域模型总图 v4
 
-> 最后更新: 2026-07-18
-> v4 变更: 删除 IProcessRoute/ProcessCompatibilityChecker; 新增审计追踪/电子签名/设备状态机/WIP位置/计量单位/工艺参数/4M1E补全; 计算器泛型化; 所有待建项已建成
+> 最后更新: 2026-07-19
+> v5 变更: 状态枚举扩展至 20 个（新增 BlueprintStatus/FormulaStatus/WeighingTaskStatus/BatchRecordStatus/CommandStatus/PickingTaskStatus/PurchaseOrderStatus/TransactionStatus/MaintenanceOrderStatus/MaterialStatus 等）；§5 新增 batch/ 包跨模块接口（equip/scm/lims/wms/mps/dms/iot/erp 共 30+ 接口）；§8.1 实现矩阵更新为 07-19 约定后状态；§10 统计重新计算；新增 event/types/ 包
 
 ## 一、产品定义域 (process/)
 
@@ -307,20 +307,74 @@ WorkOrder (工单)
 | 关键字段 | `inspectionNo`, `type`(IQC/IPQC/FQC/OQC), `planCode`, `status`(InspectionStatus), `passedCount`, `failedCount` |
 | 实现 | `easy-factory-qms: InspectionOrder extends BaseLifecycleEntity<InspectionStatus> implements IInspectionOrder` |
 
-### 5.5 状态枚举（9个，均实现 ILifecycle.StatusEnum）
+### 5.5 状态枚举（20个，均实现 ILifecycle.StatusEnum）
 
 | 枚举 | 状态流转 | 使用者 |
 |------|---------|--------|
 | `WorkOrderStatus` | CREATED→RELEASED→IN_PROGRESS→COMPLETED→CLOSED (CANCELLED) | MES |
-| `BatchStatus` | CREATED→IN_PROGRESS→COMPLETED→UNDER_REVIEW→APPROVED→RELEASED→ARCHIVED (REJECTED→返工, CANCELLED) | MES |
+| `BatchStatus` | CREATED→IN_PROGRESS→COMPLETED→UNDER_REVIEW→APPROVED→RELEASED→ARCHIVED (REJECTED, CANCELLED) | MES |
 | `MachineStatus` | IDLE→RUNNING\|SETUP\|MAINTENANCE; RUNNING→IDLE\|FAULT; FAULT→MAINTENANCE→IDLE | EQUIP |
 | `InspectionStatus` | PENDING→IN_PROGRESS→PASSED\|FAILED→CLOSED | QMS |
-| `DocumentStatus` | DRAFT→UNDER_REVIEW→APPROVED\|REJECTED→OBSOLETE | DMS |
+| `BlueprintStatus` | DRAFT→UNDER_REVIEW→APPROVED→RELEASED→OBSOLETED | PLM |
+| `FormulaStatus` | DRAFT→APPROVED→ACTIVE→RETIRED | LIMS |
+| `WeighingTaskStatus` | PENDING→WEIGHING→VERIFIED→COMPLETE | LIMS |
+| `BatchRecordStatus` | IN_PROGRESS→REVIEW→APPROVED→ARCHIVED | LIMS |
+| `DocumentStatus` | DRAFT→UNDER_REVIEW→APPROVED\|REJECTED→EFFECTIVE→OBSOLETED | DMS |
 | `AndonStatus` | OPEN→ACKNOWLEDGED→RESOLVED\|ESCALATED→CLOSED | ANDON |
 | `AssetStatus` | IDLE→IN_USE\|UNDER_MAINTENANCE→SCRAPPED | EAM |
+| `MaintenanceOrderStatus` | OPEN→IN_PROGRESS→COMPLETED→VERIFIED (CANCELLED) | EAM |
 | `ProductionPlanStatus` | DRAFT→APPROVED→RELEASED→IN_PROGRESS→COMPLETED→CLOSED | MPS |
 | `ScheduleStatus` | DRAFT→OPTIMIZED→DISPATCHED→IN_PROGRESS→COMPLETED→CANCELLED | APS |
 | `ReceiptStatus` | PENDING→PARTIAL→COMPLETED→CLOSED | WMS |
+| `PickingTaskStatus` | PENDING→IN_PROGRESS→PICKED→DELIVERED (CANCELLED) | WMS |
+| `PurchaseOrderStatus` | DRAFT→APPROVED→SENT→RECEIVING→COMPLETED (CANCELLED) | SCM |
+| `CommandStatus` | QUEUED→SENT→ACKNOWLEDGED→COMPLETED/FAILED (CANCELLED) | IoT |
+| `TransactionStatus` | PENDING→SENT→CONFIRMED/FAILED (CANCELLED) | ERP |
+| `DocumentStatus` | DRAFT→UNDER_REVIEW→APPROVED\|REJECTED→EFFECTIVE→OBSOLETED | DMS |
+
+> 另有纯值枚举（非状态机）：`SupplierStatus`(ACTIVE/INACTIVE/BLACKLISTED), `MaterialStatus`(QUARANTINE/RELEASED/REJECTED), `MaintenanceType`, `MaintenancePriority`, `CalibrationResult`, `CalibrationType`, `TransactionType`, `PickingType`, `StorageType`, `DocumentCategory`
+
+### 5.6 跨模块业务接口（batch/ 包，07-19 新增）
+
+| 接口 | 所属模块 | 说明 |
+|------|---------|------|
+| `IEquipment` | equip | 设备台账 = IMachine + ILifecycle\<MachineStatus\> + 台账字段 |
+| `IEquipmentParameter` | equip | 设定值/实际值/控制限 + `isInControl()` default |
+| `IEquipmentRecipe` | equip | 设备配方 + 内嵌 `IRecipePhase` |
+| `IOEMetrics` | equip | OEE = A×P×Q |
+| `ISupplier` | scm | 供应商编码/类别/资质/绩效 |
+| `IPurchaseOrder` | scm | 采购订单 + 内嵌 `IPurchaseOrderItem` |
+| `IFormula` | lims | 配方编码/产品/版本/批量 + 内嵌 `IFormulaPhase` |
+| `IWeighingTask` | lims | 称量任务 + 内嵌 `IWeighingItem` |
+| `IBatchRecord` | lims | 批记录（工序+称量+检验+偏差） |
+| `IStorage` | wms | 库位（仓库/区域/货架/层/位） |
+| `IReceipt` | wms | 收货单 + 内嵌 `IReceiptItem` |
+| `IInventorySnapshot` | wms | 库存快照（在手/已分配/待检/不合格） |
+| `IPickingTask` | wms | 拣料任务 + 内嵌 `IPickingTaskItem` |
+| `IDocument` | dms | 文档编号/类别/版本/复审周期 |
+| `ICommand` | iot | 设备指令 + 内嵌 CommandType(5种) + CommandPriority(3级) |
+| `IDeviceConnection` | iot | 设备连接（协议/端点/心跳） |
+| `ITagValue` | iot | 标签值 + 内嵌 TagQuality(GOOD/BAD/UNCERTAIN) |
+| `IAlarmEvent` | iot | 报警事件 + 内嵌 AlarmSeverity(4级) |
+| `IProductionPlan` | mps | 生产计划 + 内嵌 `IPlanItem` |
+| `IDemandSource` | mps | 需求来源（销售订单/预测/安全库存/手工） |
+| `IAsset` | eam | 固定资产编码/设备关联/折旧 |
+| `IMaintenanceOrder` | eam | 维护类型/优先级/停机时间/成本 |
+| `ICalibrationRecord` | eam | 校准类型/标准/结果/证书 |
+| `IErpTransaction` | erp | ERP 事务回传记录 |
+
+### 5.7 事件类型常量（event/types/ 包，07-19 新增）
+
+| 类 | 常量数 | 典型事件 |
+|----|--------|---------|
+| `PlmEventTypes` | 8 | `plm.blueprint.released`, `plm.bom.transformed` |
+| `EquipEventTypes` | 9 | `equip.status.changed`, `equip.fault.reported` |
+| `IotEventTypes` | 9 | `iot.alarm.triggered`, `iot.tag.collected` |
+| `LimsEventTypes` | 9 | `lims.formula.activated`, `lims.weighing.completed` |
+| `MpsEventTypes` | 6 | `mps.plan.released`, `mps.plan.completed` |
+| `DmsEventTypes` | 8 | `dms.document.effective`, `dms.document.obsoleted` |
+
+> 位置: `com.byz.factory.event.types`。命名格式: `{module}.{entity}.{past_tense}`。
 
 ---
 
@@ -453,25 +507,27 @@ WorkOrder (工单)
 
 ### 8.1 当前实现矩阵
 
-| 模块 | 继承 Core 基类 | 实现 Core 接口 | 使用 Core 枚举 | 文件数 |
-|------|---------------|---------------|---------------|--------|
-| **MES** | `BaseLifecycleEntity<WorkOrderStatus>` | `IWorkOrder` | `WorkOrderStatus` | 2 |
-| **QMS** | `BaseLifecycleEntity<InspectionStatus>` | `IInspectionOrder` | `InspectionStatus` | 2 |
-| **EQUIP** | `AbstractResourceItem` | `IMachine` | `SourceGroup`, `SourceType` | 2 |
-| **PLM** | `BaseEntity` | `HasVersion` | — | 2 |
-| **LIMS** | `BaseEntity` | `HasVersion` | — | 2 |
-| **ERP** | `BaseEntity` | — | — | 2 |
-| **IoT** | `BaseEntity` | — | — | 2 |
-| **EAM** | `BaseLifecycleEntity<AssetStatus>` | — | `AssetStatus` | 2 |
-| **MPS** | `BaseLifecycleEntity<ProductionPlanStatus>` | — | `ProductionPlanStatus` | 2 |
-| **APS** | `BaseLifecycleEntity<ScheduleStatus>` | — | `ScheduleStatus` | 2 |
-| **WMS** | `BaseLifecycleEntity<ReceiptStatus>`+`BaseEntity` | — | `ReceiptStatus` | 3 |
-| **ANDON** | `BaseLifecycleEntity<AndonStatus>` | — | `AndonStatus` | 2 |
-| **BI** | `DataExpand`(from common) | — | — | 2 |
-| **SCM** | `BaseEntity` | — | — | 2 |
-| **DMS** | `BaseLifecycleEntity<DocumentStatus>` | — | `DocumentStatus` | 2 |
+| 模块 | 状态 | 继承 Core 基类 | 实现 Core 接口 | 模型/Service 文件数 |
+|------|------|---------------|---------------|-------------------|
+| **MES** | 骨架 | `BaseLifecycleEntity<WorkOrderStatus>` | `IWorkOrder` | 2 |
+| **QMS** | 骨架 | `BaseLifecycleEntity<InspectionStatus>` | `IInspectionOrder` | 2 |
+| **PLM** | ✅ 约定已建立 | `BaseLifecycleEntity<BlueprintStatus>` + `BaseEntity` | `IBlueprint`, `HasVersion`, `IProcessParameter` | 7 (模型4 + BOM2 + differ1) |
+| **EQUIP** | ✅ 约定完成 | `AbstractResourceItem` | `IEquipment` (⭐ 合并版) | 4 (模型4) |
+| **LIMS** | ✅ 约定已建立 | `BaseLifecycleEntity<FormulaStatus\|WeighingTaskStatus\|BatchRecordStatus>` + `BaseEntity` | `IFormula`, `IWeighingTask`, `IBatchRecord` | 4 (模型4) |
+| **ERP** | ✅ 约定已建立 | `BaseLifecycleEntity<TransactionStatus>` + `BaseEntity` | `IErpTransaction` | 4 (模型4) |
+| **IoT** | ✅ 约定已建立 | `BaseLifecycleEntity<CommandStatus>` + `BaseEntity` | `IDeviceConnection`, `ITagValue`, `ICommand`, `IAlarmEvent` | 4 (模型4) |
+| **EAM** | ✅ 约定已建立 | `BaseLifecycleEntity<AssetStatus\|MaintenanceOrderStatus>` + `BaseEntity` | `IAsset`, `IMaintenanceOrder`, `ICalibrationRecord` | 3 (模型3) |
+| **MPS** | ✅ 约定已建立 | `BaseLifecycleEntity<ProductionPlanStatus>` + `BaseEntity` | `IProductionPlan`, `IDemandSource` | 4 (模型4) |
+| **APS** | 骨架 | `BaseLifecycleEntity<ScheduleStatus>` | — | 1 |
+| **WMS** | ✅ 约定已建立 | `BaseLifecycleEntity<ReceiptStatus\|PickingTaskStatus>` + `BaseEntity` | `IStorage`, `IReceipt`, `IInventorySnapshot`, `IPickingTask` | 4 (模型4) |
+| **ANDON** | 骨架 | `BaseLifecycleEntity<AndonStatus>` | — | 1 |
+| **BI** | 骨架 | `DataExpand` | — | 1 |
+| **SCM** | ✅ 约定已建立 | `BaseLifecycleEntity<PurchaseOrderStatus>` + `BaseEntity` | `ISupplier`, `IPurchaseOrder` | 3 (模型3) |
+| **DMS** | ✅ 约定已建立 | `BaseLifecycleEntity<DocumentStatus>` + `BaseEntity` | `IDocument` | 3 (模型3) |
 
-> 所有模块目前均为 model + service interface 存根，service 实现层待开发。
+> ✅ = 约定已建立（模型完整 + Service 接口 + 实质性测试）。
+> 骨架 = 仅有 model + service 接口存根，无业务方法。
+> Phase 1-2 共 9 个模块已完成约定建立。
 
 ### 8.2 三条集成总线
 
@@ -533,12 +589,25 @@ Blueprint                 Factory                    WorkOrder
 ## 十、统计
 
 ```
-接口:     43 个
-类:       25 个
-枚举:     18 个  (Execute|Control|Importance|SourceGroup|SourceType|UOM|SignatureMeaning
-                  |9个Status枚举|StationType|ExecutionMode|TimeCategory)
-记录:      3 个  (AuditTrail|LineConnection|LineNode)
-异常:      2 个  (ActionException|ResourceException)
-─────────────────────
-合计:     91 个定义
+core 接口 (含内嵌):  ~58 个  (§1-§5: 8+6+13+10+30 = 67，含内部接口)
+core 类:             25 个  (Action, Process, Factory, ResourceItem, ResourcePack, BillOfMaterial,
+                            BaseEntity, BaseLifecycleEntity, AbstractResourceItem, Data, DataExpand,
+                            SemanticVersion, DomainEventPublisher, ProductChecker, ProcessRouteMatcher,
+                            ActionLibrary, ActionGroup, TagFilter, Constant, Creator, etc.)
+core 记录+值对象:      7 个  (AuditTrail, LineConnection, LineNode, BlueprintDiff, BOMConversionRequest,
+                            BOMConversionResult, CapacityCheck)
+状态枚举:            20 个  (§5.5 全部实现 ILifecycle.StatusEnum)
+值枚举 (core):       15 个  (Execute|Control|Importance|SourceGroup|SourceType|UOM|BumpType|
+                            StationType|ExecutionMode|TimeCategory|SignatureMeaning|SupplierStatus|
+                            MaterialStatus|PickingType|StorageType|DocumentCategory|TransactionType|
+                            MaintenanceType|MaintenancePriority|CalibrationResult|CalibrationType)
+内嵌枚举:             10 个  (CommandType|CommandPriority|TagQuality|AlarmSeverity|
+                            BOMType|DiffType|DiffDimension|CapacityResult|ApprovalDecision|...)
+异常:                 2 个  (ActionException, ResourceException)
+EventTypes 类:        6 个  (Plm|Equip|Iot|Lims|Mps|Dms)
+─────────────────────────
+合计:               ~143 个定义
 ```
+
+> 注：统计不含模块内部类（如 DemandSourceType、ErpMaterialType）和 Java record（如 BOMConversionRequest）。
+> 07-19 新增：§5.6 的 30+ 跨模块接口、§5.7 的 6 个 EventTypes 类、20 个状态枚举（原 9 个 + 新增 11 个）。

@@ -46,7 +46,7 @@
 
 | 模块 | 状态 | 核心模型 | 核心Service接口 |
 |------|------|---------|---------------|
-| `mes` | 骨架 | MesWorkOrder | WorkOrderService |
+| `mes` | 约定已建立 | MesWorkOrder + ProcessRecord + ActionRecord | WorkOrderService (11方法) |
 | `qms` | 骨架 | InspectionOrder | InspectionService |
 | `plm` | 约定已建立 | ProcessTemplate, Blueprint, ProcessParameter | BlueprintService |
 | `equip` | 约定完成 | Equipment + EquipmentParameter + EquipmentRecipe + OEMetrics + EquipEventTypes | EquipmentService (16方法) |
@@ -55,7 +55,7 @@
 | `iot` | 约定完成 | DeviceConnection + TagValue + Command(CommandStatus) + AlarmEvent + IotEventTypes | IotGatewayService (13方法) |
 | `eam` | 约定已建立 | Asset, MaintenanceOrder, CalibrationRecord | EamService |
 | `mps` | 约定完成 | ProductionPlan + DemandSource + DemandSourceType + CapacityCheck + MpsEventTypes | MpsService (14方法) |
-| `aps` | 骨架 | Schedule | ApsService |
+| `aps` | 约定已建立 | Schedule + ScheduledTask + ResourceCalendar + RescheduleTrigger + SchedulingRule + ApsEventTypes | ApsService (5方法) |
 | `wms` | 约定已建立 | Storage, Receipt, PickingTask, InventorySnapshot | WmsService (20方法) |
 | `andon` | 骨架 | AndonCall | AndonService |
 | `bi` | 骨架 | KpiSnapshot | DashboardService |
@@ -653,10 +653,148 @@ WMS 管理物料/成品的仓储运作——收货、上架、拣料、发运、
 
 ---
 
+## MES 模块约定（2026-07-19 建立）
+
+### 设计定位
+
+MES（制造执行系统）是 Phase 3 的**集成枢纽**——基于 core 的工序/动作模型，实现工单管理、工序流转、动作级报工和生产追溯。MES 是事件的主要生产者（工单下达→APS排程、工序中断→QMS检验、工序开始→Equip状态更新），通过领域事件与各模块松耦合协作。
+
+### 设计裁定（design-decisions.md §2.1-2.4）
+
+| 裁定 | 条款 | 执行 |
+|------|------|------|
+| 工单与蓝图 | §2.1 | 运行时按版本号解析 + 工单发布时冻结 blueprintVersion |
+| 报工粒度 | §2.2 | 动作级——每次 Action 执行生成 ActionRecord |
+| 并行工序 | §2.3 | ExecutionMode.PARALLEL 标记 |
+| QMS 中断 | §2.4 | Control.Interrupt + 领域事件双向通信 |
+
+### Core 层新增（供跨模块引用）
+
+| 类型 | 文件 | 说明 |
+|------|------|------|
+| 状态枚举 | `batch/ProcessStatus.java` | PENDING→IN_PROGRESS→COMPLETED / IN_PROGRESS→INTERRUPTED→IN_PROGRESS(恢复)；+SKIPPED+CANCELLED；实现 ILifecycle.StatusEnum |
+| 事件常量 | `event/types/MesEventTypes.java` | ⭐ 10 个领域事件常量（与 PlmEventTypes/EquipEventTypes 等同包 `com.byz.factory.event.types`） |
+
+### MES 模型
+
+| 文件 | 继承 | 实现 | 说明 |
+|------|------|------|------|
+| `model/MesWorkOrder.java` | `BaseLifecycleEntity<WorkOrderStatus>` | `IWorkOrder` | ⭐ 工单核心实体：完整状态机 + 6 个业务便捷方法(release/start/complete/close/cancel) + 蓝图版本冻结(design-decisions.md §2.1) + 配方/设备配方关联 + IExpand 文档 |
+| `model/ProcessRecord.java` | `BaseLifecycleEntity<ProcessStatus>` | — | 工序记录：完整状态机 + 6 个业务便捷方法(start/interrupt/resume/complete/skip/cancel) + ActionRecord 列表管理 + QMS 中断支持 |
+| `model/ActionRecord.java` | `BaseEntity` | `ITraceable` | ⭐ 动作记录（设计裁定 §2.2 动作级报工）：before/after 快照 + 追溯字段 + 无独立状态机(生命周期由 ProcessRecord 驱动) |
+
+### 服务接口
+
+| 文件 | 说明 |
+|------|------|
+| `service/WorkOrderService.java` | 11 方法：工单生命周期(create/release/start/complete/close) + 工序流转(executeProcess/reportAction) + QMS中断恢复(resumeProcess) + 查询(findByWorkOrderNo/findProcessRecords/findActionRecords) |
+
+### 约定规则
+
+1. **跨模块接口** — MES 核心实体通过 core `batch/` 包中已有接口暴露（`IWorkOrder`）；ProcessRecord 为 MES 内部模型（其他模块通过事件感知工序状态变更）；ActionRecord 实现 `ITraceable` 供 LIMS/QMS 追溯
+2. **状态机** — `WorkOrderStatus`（已有）、`ProcessStatus`（新增）放 core `batch/` 包中，均实现 `ILifecycle.StatusEnum`；MesWorkOrder/ProcessRecord 继承 `BaseLifecycleEntity<S>` 获得 `transition()` 校验
+3. **模型继承** — 有状态实体（MesWorkOrder, ProcessRecord）继承 `BaseLifecycleEntity<S>` + 实现 core 接口；无状态记录（ActionRecord）继承 `BaseEntity` + 实现 `ITraceable`
+4. **IExpand 约定** — `mes.workOrderNo` / `mes.productCode` / `mes.blueprintVersion` / `mes.formulaCode` / `mes.recipeCode` / `mes.operator` / `mes.batchNo` 挂载在 MesWorkOrder 上；`mes.processRecord.workOrderNo` / `mes.processRecord.processCode` / `mes.processRecord.operator` / `mes.processRecord.interruptedBy` / `mes.processRecord.interruptReason` 挂载在 ProcessRecord 上；`mes.actionRecord.processRecordId` / `mes.actionRecord.actionCode` / `mes.actionRecord.workOrderNo` / `mes.actionRecord.batchNo` / `mes.actionRecord.operator` / `mes.actionRecord.result` 挂载在 ActionRecord 上
+5. **业务便捷方法** — MesWorkOrder: `release(blueprint,operator,plannedStart,plannedEnd,factoryCode)` / `start()` / `complete()` / `close()` / `cancel()` / `isBlueprintVersionFrozen()`；ProcessRecord: `start(operator)` / `interrupt(by,reason)` / `resume()` / `complete()` / `skip()` / `cancel()` / `addAction(ar)`；ActionRecord: `complete(result,beforeSnapshot,afterSnapshot,remark)` / `recordSnapshot(before,after)`
+6. **领域事件** — 事件常量在 `MesEventTypes` 中统一管理，遵循 `{module}.{entity}.{past_tense}` 命名约定（10 个事件：工单 5 + 工序 4 + 动作 1）；**模型层不发布事件**（design-decisions.md §1.1），由 Service 实现类统一负责
+7. **蓝图版本冻结** — 工单下达时冻结 Blueprint 版本号到 `blueprintVersion` 字段（design-decisions.md §2.1）；运行时按 `blueprintCode + blueprintVersion` 从 PLM 获取 Blueprint；蓝图后续变更不影响已发布工单
+8. **动作级报工** — 每次 Action 执行后生成一条 `ActionRecord`，实现 `ITraceable` 的 before/after 快照（design-decisions.md §2.2）；ProcessRecord 是工序级聚合视图
+9. **QMS 中断流程** — MES 执行到检验动作 → `Control.Interrupt` → 暂停工序（IN_PROGRESS→INTERRUPTED）→ 发布 `mes.process.interrupted` → QMS 订阅创建 InspectionOrder → QMS 判定后回调 `resumeProcess()` 恢复（design-decisions.md §2.4）；预留超时自动升级为 Andon 异常
+10. **测试规范** — Given-When-Then + `methodName_condition_expectedResult` + `@DisplayName` 中文描述；覆盖 MesWorkOrder 构造+状态转换+蓝图版本冻结+非法转换、ProcessRecord 状态流转+QMS中断+设备故障中断、ActionRecord 与 ITraceable 一致性、ProcessStatus 枚举定义、MesEventTypes 事件常量命名约定、完整链路综合场景
+11. **待实现** — WorkOrderService 实现类、工序流转引擎（动作链遍历+ExecutionMode 路由）、REST 控制器、与 PLM（蓝图解析）/Equip（设备状态）/WMS（物料配送）/LIMS（配方称量）的集成、Andon 超时升级
+
+### 跨模块事件契约
+
+> 其他模块通过 `DomainEventPublisher.subscribe(MesEventTypes.XXX, handler)` 订阅。
+
+| 事件 | 订阅方 | 用途 |
+|------|--------|------|
+| `mes.workorder.created` | **BI** | 工单创建统计 |
+| `mes.workorder.released` | **APS, WMS** | APS 触发排程 / WMS 触发拣料任务 |
+| `mes.workorder.started` | **Equip, LIMS** | Equip 更新设备状态 / LIMS 准备配方称量 |
+| `mes.workorder.completed` | **BI, ERP** | BI 生产看板 / ERP 成品入库 |
+| `mes.workorder.closed` | **BI** | BI 工单关闭统计 |
+| `mes.process.started` | **Equip, QMS** | Equip 更新设备占用 / QMS 按需创建检验 |
+| `mes.process.completed` | **BI** | BI 工序进度看板 |
+| `mes.process.interrupted` | **QMS, Andon** | QMS 创建检验单 / Andon 超时升级 |
+| `mes.process.resumed` | **QMS, Andon** | QMS 关闭检验 / Andon 取消呼叫 |
+| `mes.action.completed` | **LIMS** | 批记录实时写入（边做边记） |
+
+---
+
+## APS 模块约定（2026-07-19 建立）
+
+### 设计定位
+
+APS（高级排程系统）在 MPS 确定"生产什么、生产多少、何时交付"之后，负责"在哪个设备上、按什么顺序、什么时间段"来执行。APS 的输出直接驱动 MES 的工单下发，是计划→执行的最后一环。
+
+### 设计裁定（design-decisions.md §2.5-2.6, §4.11）
+
+| 裁定 | 条款 | 执行 |
+|------|------|------|
+| 排程算法 | §2.5 | 规则式起步（EDD/SPT/CR），预留 IOptimizationEngine 接口 |
+| 重排程触发 | §2.6 | 事件驱动增量（订阅 mes.workorder.released / equip.fault.reported / scm.receipt.delayed） |
+| 约束类型 | §4.11 | 设备容量超限→硬约束；人员资质不匹配→硬约束；交期延误→软约束 |
+
+### Core 层新增（供跨模块引用）
+
+| 类型 | 文件 | 说明 |
+|------|------|------|
+| 事件常量 | `event/types/ApsEventTypes.java` | ⭐ 5 个领域事件常量（与 PlmEventTypes/MesEventTypes/MpsEventTypes 等同包 `com.byz.factory.event.types`） |
+
+### APS 模型
+
+| 文件 | 继承 | 实现 | 说明 |
+|------|------|------|------|
+| `model/Schedule.java` | `BaseLifecycleEntity<ScheduleStatus>` | — | 排程方案核心实体：完整状态机 + 6 个业务便捷方法(optimize/dispatch/start/complete/cancel/addTask) + ScheduledTask 静态内部类 + IExpand 文档 |
+| `model/Schedule.ScheduledTask` | — | — | 排程任务内嵌类：工单号+工序+设备+人员+起止时间+工时+前置依赖+TaskStatus |
+| `model/ResourceCalendar.java` | `BaseEntity` | — | 资源日历：可用窗口+产能+canFit/overlapMinutes/getAvailableMinutes |
+| `model/RescheduleTrigger.java` | `BaseEntity` | — | 重排程触发记录：scheduleCode+triggerEvent+processed+markProcessed() |
+| `model/TaskStatus.java` | — | — | 任务状态枚举：SCHEDULED/DISPATCHED/IN_PROGRESS/COMPLETED/CANCELLED |
+| `model/ResourceType.java` | — | — | 资源类型枚举：MACHINE/PERSONNEL（映射自 Dict.SourceGroup 子集） |
+| `service/SchedulingRule.java` | — | — | 排程规则引擎：EDD/SPT/CR 三种 Comparator + of(strategy) 工厂方法 + sort() 就地排序 |
+
+### 服务接口
+
+| 文件 | 说明 |
+|------|------|
+| `service/ApsService.java` | 5 方法：createSchedule(planNo,factoryCode) / optimize(scheduleCode,strategy) / dispatch(scheduleCode) / reschedule(scheduleCode,triggerEvent) / getSchedule(scheduleCode) |
+
+### 约定规则
+
+1. **跨模块接口** — APS 的核心状态枚举（ScheduleStatus）放 core `batch/` 包中；事件常量（ApsEventTypes）放 core `event/types/` 包中；Schedule 模型不暴露 core 接口（其他模块通过事件感知排程变更，不做编译期引用）
+2. **状态机** — 使用 core 的 `ScheduleStatus`（实现 `ILifecycle.StatusEnum`，DRAFT→OPTIMIZED→DISPATCHED→IN_PROGRESS→COMPLETED；任意非终态→CANCELLED）；`transition()` 自动校验非法转换
+3. **模型继承** — 有状态实体（Schedule）继承 `BaseLifecycleEntity<ScheduleStatus>`；无状态记录（ResourceCalendar, RescheduleTrigger）继承 `BaseEntity`
+4. **IExpand 约定** — `aps.planNo` / `aps.strategy` / `aps.optimizationGoal` / `aps.scheduledDate` / `aps.horizonStart` / `aps.horizonEnd` 挂载在 Schedule 上；`aps.resourceCode` / `aps.resourceType` / `aps.availableFrom` / `aps.availableTo` 挂载在 ResourceCalendar 上
+5. **业务便捷方法** — Schedule: `optimize(strategy)` / `dispatch()` / `start()` / `complete()` / `cancel()` / `addTask(task)`；ResourceCalendar: `canFit(start,end)` / `overlapMinutes(start,end)` / `getAvailableMinutes()` / `getCapacityMinutes()`；RescheduleTrigger: `markProcessed()`
+6. **领域事件** — 事件常量在 `ApsEventTypes` 中统一管理，遵循 `{module}.{entity}.{past_tense}` 命名约定；**模型层不发布事件**（design-decisions.md §1.1），由 Service 实现类统一负责
+7. **排程规则引擎** — `SchedulingRule` 实现 EDD（最早交期优先）、SPT（最短工时优先）、CR（关键比率优先）三种经典规则；每种规则返回 Comparator<ScheduledTask>，规则可组合；预留 IOptimizationEngine 接口供后续接入 OR-Tools/OptaPlanner（design-decisions.md §2.5）
+8. **ScheduledTask 内嵌类** — 排程任务作为 Schedule 的静态内部类（@Data），含全参构造和无参构造；predecessors 存储前置任务编码列表；status 使用 TaskStatus 枚举；getTotalDurationMin() 返回换型+加工总分钟数
+9. **ResourceCalendar 产能约束** — canFit() 检查任务时间是否在可用窗口内（硬约束）；overlapMinutes() 计算重叠时间；getCapacityMinutes() 返回产能分钟数（capacityHours × 60）
+10. **重排程触发** — RescheduleTrigger 记录事件驱动的重排程触发（mes.workorder.released / equip.fault.reported / scm.receipt.delayed）；全量重排程由计划员手动触发（API 调用），不走此记录（design-decisions.md §2.6）
+11. **测试规范** — Given-When-Then + `methodName_condition_expectedResult` + `@DisplayName` 中文描述；覆盖构造、状态转换（正常+非法+终态+全生命周期+取消路径）、TaskStatus/ResourceType 枚举、ScheduledTask 构造+getTotalDurationMin、ResourceCalendar 可用时间计算+canFit+overlapMinutes、RescheduleTrigger 构造+markProcessed、排程规则 EDD/SPT/CR 正确性、ApsEventTypes 事件命名约定+PREFIX、ApsService 接口契约、ScheduleStatus 枚举覆盖、综合集成场景
+12. **待实现** — ApsService 实现类、IOptimizationEngine 接口（预留 OR-Tools/OptaPlanner）、MPS→APS 计划接收、APS→MES 下发集成、资源日历数据库持久化、甘特图数据输出、REST 控制器
+
+### 跨模块事件契约
+
+> 其他模块通过 `DomainEventPublisher.subscribe(ApsEventTypes.XXX, handler)` 订阅。
+
+| 事件 | 订阅方 | 用途 |
+|------|--------|------|
+| `aps.plan.received` | **MPS** | 确认 MPS 计划已被 APS 接收 |
+| `aps.schedule.created` | **MES, BI** | MES 预知排程创建 / BI 排程统计 |
+| `aps.schedule.released` | **MES, Equip** | MES 根据排程任务下发工单 / Equip 锁定设备占用时段 |
+| `aps.task.delayed` | **BI, Andon** | BI 交期延误统计 / Andon 异常预警 |
+| `aps.reschedule.triggered` | **MES, BI** | MES 同步更新工单计划 / BI 排程变更统计 |
+
+---
+
 ## 更新记录
 
 | 日期 | 内容 |
 |------|------|
+| 2026-07-19 | **APS 模块约定建立**：1 个 core 新增(ApsEventTypes 5事件) + 5 个模型(Schedule升级+ScheduledTask内嵌类+ResourceCalendar新建+RescheduleTrigger新建+TaskStatus枚举+ResourceType枚举) + SchedulingRule 排程规则引擎(EDD/SPT/CR) + ApsService 接口(5方法) + 63 个测试 |
+| 2026-07-19 | **MES 模块约定建立**：2 个 core 新增(ProcessStatus 枚举 + MesEventTypes 10事件) + 3 个模型(MesWorkOrder升级+ProcessRecord新建+ActionRecord新建) + WorkOrderService 接口扩展(6→11方法) + 32 个测试 |
 | 2026-07-19 | **WMS 模块约定完成**：4 个 core 接口(IStorage/IReceipt/IPickingTask/IInventorySnapshot) + 4 个 core 枚举(PickingTaskStatus/StorageType/PickingType/MaterialStatus) + 4 个模型(Storage重构+Receipt重构+PickingTask新建+InventorySnapshot新建) + WmsService扩展(4→20方法) + 33 个测试 |
 | 2026-07-19 | **LIMS 模块约定完成**：3 个 core 状态枚举(FormulaStatus/WeighingTaskStatus/BatchRecordStatus) + 3 个 core 接口(IFormula/IWeighingTask/IBatchRecord) + LimsEventTypes(9事件) + 4 个模型(Formula重写+WeighingTask+WeighingItem+BatchRecord) + 3 个服务接口(FormulaService 10方法/WeighingTaskService 7方法/BatchRecordService 8方法) + 脚本迁移(mes→lims) + 新建批记录生成脚本 + 47 个测试 |
 | 2026-07-19 | **MPS 模块约定完成**：2 个 core 接口(IProductionPlan/IDemandSource) + MpsEventTypes(8事件) + 4 个模型(ProductionPlan增强 + DemandSource + DemandSourceType + CapacityCheck) + MpsService扩展(4→14方法) + 47 个测试 |

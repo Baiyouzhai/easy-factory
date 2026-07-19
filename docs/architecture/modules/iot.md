@@ -9,7 +9,7 @@
 ### 设备资源动态化
 
 ```java
-// core: IResourceModel (group=Machine) 是静态的设备定义
+// core: IResourceItem (group=Machine) 是静态的设备定义
 // IoT 通过 IExpand 注入实时数据：
 
 // "iot.connectionStatus"  → "ONLINE" | "OFFLINE" | "ERROR"

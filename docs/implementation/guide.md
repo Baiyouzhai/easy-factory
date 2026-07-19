@@ -134,7 +134,7 @@ easy-factory-<name>/
 public interface IProcess {
     String getCode();
     List<IActionModel> getActions();
-    IResourcePack execute(IResourceModel... inputResources);
+    IResourcePack execute(IResourceItem... inputResources);
 }
 
 // mes 模块实现
@@ -147,7 +147,7 @@ public class MesProcess implements IProcess, IDataExpand {
     private IResourcePack resourcePack;
 
     @Override
-    public IResourcePack execute(IResourceModel... inputResources) {
+    public IResourcePack execute(IResourceItem... inputResources) {
         // MES 特有的执行逻辑：关联工单、记录时间、触发 QMS
         IResourcePack result = resourcePack;
         for (IActionModel action : actions) {
@@ -237,7 +237,7 @@ class MesWorkOrderIntegrationTest {
 
     @Test
     void createWorkOrder_shouldCreateFromBlueprint() {
-        IProductInfoModel product = mockProduct();
+        IProductInfo product = mockProduct();
         WorkOrder order = workOrderService.create(product, BigDecimal.ONE);
         assertEquals("CREATED", order.getStatus());
     }

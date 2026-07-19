@@ -1,9 +1,9 @@
 package com.byz.factory.eam.service;
 
-import com.byz.factory.batch.CalibrationResult;
-import com.byz.factory.batch.CalibrationType;
-import com.byz.factory.batch.MaintenancePriority;
-import com.byz.factory.batch.MaintenanceType;
+import com.byz.factory.eam.CalibrationResult;
+import com.byz.factory.eam.CalibrationType;
+import com.byz.factory.eam.MaintenancePriority;
+import com.byz.factory.eam.MaintenanceType;
 import com.byz.factory.eam.model.Asset;
 import com.byz.factory.eam.model.CalibrationRecord;
 import com.byz.factory.eam.model.MaintenanceOrder;
