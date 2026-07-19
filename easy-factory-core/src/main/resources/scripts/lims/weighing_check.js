@@ -1,8 +1,8 @@
 /**
- * @id          mes.weighing-check.v1
+ * @id          lims.weighing-check.v1
  * @name        称量防错
  * @version     1.0.0
- * @module      mes
+ * @module      lims
  * @author      engineer-b
  * @description 对比天平读数与配方量，计算偏差百分比。超差时拒绝记录并抛出异常。
  * @param       {ProcessInfo} process - 当前称量工序

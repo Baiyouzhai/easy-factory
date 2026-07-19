@@ -50,13 +50,13 @@
 | `qms` | 骨架 | InspectionOrder | InspectionService |
 | `plm` | 约定已建立 | ProcessTemplate, Blueprint, ProcessParameter | BlueprintService |
 | `equip` | 约定完成 | Equipment + EquipmentParameter + EquipmentRecipe + OEMetrics + EquipEventTypes | EquipmentService (16方法) |
-| `lims` | 骨架 | Formula | FormulaService |
+| `lims` | 约定已建立 | Formula + WeighingTask + WeighingItem + BatchRecord + LimsEventTypes | FormulaService (10方法) + WeighingTaskService (7方法) + BatchRecordService (8方法) |
 | `erp` | 约定已建立 | MaterialCache, InventorySnapshot, Transaction(TransactionStatus) | ErpAdapterService |
 | `iot` | 约定完成 | DeviceConnection + TagValue + Command(CommandStatus) + AlarmEvent + IotEventTypes | IotGatewayService (13方法) |
 | `eam` | 约定已建立 | Asset, MaintenanceOrder, CalibrationRecord | EamService |
-| `mps` | 骨架 | ProductionPlan | MpsService |
+| `mps` | 约定完成 | ProductionPlan + DemandSource + DemandSourceType + CapacityCheck + MpsEventTypes | MpsService (14方法) |
 | `aps` | 骨架 | Schedule | ApsService |
-| `wms` | 骨架 | Storage, Receipt | WmsService |
+| `wms` | 约定已建立 | Storage, Receipt, PickingTask, InventorySnapshot | WmsService (20方法) |
 | `andon` | 骨架 | AndonCall | AndonService |
 | `bi` | 骨架 | KpiSnapshot | DashboardService |
 | `scm` | 约定已建立 | Supplier, PurchaseOrder(PurchaseOrderStatus) | ScmService |
@@ -458,10 +458,208 @@ DMS 管理制造运营中的 GMP 受控文档——SOP、批记录、检验报�
 
 ---
 
+## LIMS 模块约定（2026-07-19 建立）
+
+### 设计定位
+
+LIMS 管理产品配方（物料组成）、配料称量和批记录。配方本质是 core 的 `IResourcePack` + 版本管理 + 投料阶段划分；称量任务关联工单和批次，通过允差校验实现防错；批记录是 GMP 合规的核心文档，记录从投料到产出的完整制造过程。LIMS 向上为 MES（配方下发/物料信息）、QMS（称量偏差→偏差处理）、DMS（批记录归档）、ERP（物料消耗同步）提供支撑。
+
+### Core 层新增（供跨模块引用）
+
+| 类型 | 文件 | 说明 |
+|------|------|------|
+| 状态枚举 | `batch/FormulaStatus.java` | DRAFT→APPROVED→ACTIVE→RETIRED；APPROVED 可退回 DRAFT |
+| 状态枚举 | `batch/WeighingTaskStatus.java` | PENDING→WEIGHING→VERIFIED→COMPLETE |
+| 状态枚举 | `batch/BatchRecordStatus.java` | IN_PROGRESS→REVIEW→APPROVED→ARCHIVED；REVIEW 可退回 IN_PROGRESS |
+| 接口 | `batch/IFormula.java` | ⭐ 配方抽象 + IFormulaPhase 嵌套接口；供 MES/QMS/ERP 编译期引用 |
+| 接口 | `batch/IWeighingTask.java` | ⭐ 称量任务抽象 + IWeighingItem 嵌套接口；供 MES/IoT/QMS 编译期引用 |
+| 接口 | `batch/IBatchRecord.java` | ⭐ 批记录抽象；供 MES/QMS/DMS 编译期引用 |
+| 事件常量 | `event/types/LimsEventTypes.java` | ⭐ 9 个领域事件常量（与 DmsEventTypes/EquipEventTypes/IotEventTypes/PlmEventTypes 同包 `com.byz.factory.event.types`） |
+
+### LIMS 模型
+
+| 文件 | 继承 | 实现 | 说明 |
+|------|------|------|------|
+| `model/Formula.java` | `BaseLifecycleEntity<FormulaStatus>` | `IFormula, HasVersion` | 配方核心实体：完整状态机 + 6 个业务便捷方法 + 语义版本管理(SemanticVersionStrategy) + 领域事件发布 + FormulaPhase 内部类 + IExpand 文档 |
+| `model/WeighingTask.java` | `BaseLifecycleEntity<WeighingTaskStatus>` | `IWeighingTask` | 称量任务：3 个业务便捷方法 + 偏差检测(getDeviatedItems) + 领域事件发布 |
+| `model/WeighingItem.java` | — | `IWeighingTask.IWeighingItem` | 称量明细：recordWeighing() + getDeviationPercent() + isOutOfTolerance() |
+| `model/BatchRecord.java` | `BaseLifecycleEntity<BatchRecordStatus>` | `IBatchRecord` | 批记录：4 个业务便捷方法 + 3 个记录添加方法 + 领域事件发布 + IExpand 文档 |
+
+### 服务接口
+
+| 文件 | 说明 |
+|------|------|
+| `service/FormulaService.java` | 10 方法：create/getByCode/list/submitForApproval/approve/activate/retire/releaseVersion/createWeighingTask/getFormulaByProductAndVersion |
+| `service/WeighingTaskService.java` | 7 方法：create/getByCode/listByWorkOrder/startWeighing/recordWeighingItem/verify/complete |
+| `service/BatchRecordService.java` | 8 方法：create/getByBatchNo/listByWorkOrder/submitForReview/approve/reject/archive/addDeviation |
+
+### 脚本
+
+| 文件 | ID | 说明 |
+|------|-----|------|
+| `scripts/lims/weighing_check.js` | `lims.weighing-check.v1` | 称量防错（从 MES 迁移至 LIMS）：对比天平读数与配方量，超差时拒绝并记录偏差 |
+| `scripts/lims/batch_record_generate.js` | `lims.batch-record-generate.v1` | 批记录生成：收集称量/工序/检验数据，计算收率，生成 GMP 批记录 |
+
+### 约定规则
+
+1. **跨模块接口** — LIMS 实体通过 core `batch/` 包中的接口暴露（`IFormula`、`IWeighingTask`、`IBatchRecord`）；其他模块通过接口引用配方/称量/批记录，无需直接依赖 LIMS 模块
+2. **状态机** — `FormulaStatus`、`WeighingTaskStatus`、`BatchRecordStatus` 放 core `batch/` 包中，实现 `ILifecycle.StatusEnum`；Formula/WeighingTask/BatchRecord 继承 `BaseLifecycleEntity<S>` 获得 `transition()` 校验
+3. **模型继承** — 有状态实体（Formula, WeighingTask, BatchRecord）继承 `BaseLifecycleEntity<S>` + 实现 core 接口；无状态明细（WeighingItem）实现 core 嵌套接口
+4. **IExpand 约定** — `lims.formulaCode` / `lims.formulaVersion` / `lims.batchSize` / `lims.status` / `lims.effectiveDate` / `lims.expiryDate` 挂载在 Formula 上；`lims.weighing.formulaCode` / `lims.weighing.workOrderId` / `lims.weighing.batchNo` 挂载在 WeighingTask 上；`lims.batch.*` 挂载在 BatchRecord 上；物料级 `lims.phase` / `lims.additionOrder` / `lims.toleranceMin` / `lims.toleranceMax` 挂载在 Resource 上
+5. **业务便捷方法** — Formula: `submitForApproval()` / `approve(approvedBy)` / `activate()` / `reject(reason)` / `retire(reason)` / `bumpVersion(BumpType)` / `addPhase(phase)`；WeighingTask: `startWeighing()` / `verify()` / `completeWeighing()` / `addItem(item)` + 查询 `getDeviatedItems()`；BatchRecord: `submitForReview()` / `approve(reviewedBy)` / `reject(reason)` / `archive()` + 记录添加 `addProcessRecord/addWeighingTask/addDeviation`
+6. **领域事件** — 事件常量在 `LimsEventTypes` 中统一管理，遵循 `{module}.{entity}.{past_tense}` 命名约定；业务方法内部通过 `DomainEventPublisher` 发布对应事件
+7. **版本管理** — Formula 使用 `SemanticVersionStrategy(BumpType.MINOR)` 进行语义版本管理（默认 0.1.0）；`bumpVersion(BumpType)` 支持 MAJOR/MINOR/PATCH 三种递增；`createNewVersion(newVersion)` = 基于当前配方克隆新版本草稿
+8. **FormulaPhase 内部类** — 投料阶段作为 Formula 的静态内部类（参照 EquipmentRecipe.RecipePhase 模式），含 phaseNo/phaseName/actions/conditions
+9. **WeighingItem 独立类** — 称量项目为独立类实现 `IWeighingTask.IWeighingItem`（参照 PurchaseOrderItem 模式），含 `recordWeighing()` + `getDeviationPercent()` + `isOutOfTolerance()` 三个业务方法
+10. **BatchRecord 记录引用** — processRecords/weighingTasks/inspectionRecords/deviations 存储为 `List<String>`（引用键），避免与 MES/QMS 的直接对象依赖
+11. **测试规范** — Given-When-Then + `methodName_condition_expectedResult` + `@DisplayName` 中文描述；覆盖构造、状态转换（正常+非法+终态）、业务便捷方法、事件发布、IExpand、查询方法
+12. **待实现** — FormulaService 实现类、WeighingTaskService 实现类、BatchRecordService 实现类、IoT 天平集成、REST 控制器、称量防错与 ScriptEngine 桥接
+
+### 跨模块事件契约
+
+> 其他模块通过 `DomainEventPublisher.subscribe(LimsEventTypes.XXX, handler)` 订阅。
+
+| 事件 | 订阅方 | 用途 |
+|------|--------|------|
+| `lims.formula.activated` | **MES** | 配方激活后同步更新工单可用配方 |
+| `lims.formula.retired` | **MES** | 标记旧版配方不可用于新工单 |
+| `lims.weighing.task_created` | **IoT** | 激活对应天平数据采集 |
+| `lims.weighing.completed` | **MES, QMS, ERP** | MES 接收物料信息 / QMS 称量偏差→偏差处理 / ERP 同步物料消耗 |
+| `lims.batch_record.created` | **DMS** | 批记录生成后归档至文档管理系统 |
+| `lims.batch_record.approved` | **QMS** | 关闭关联偏差 |
+| `lims.batch_record.archived` | **DMS** | 确认归档完成 |
+
+---
+
+## MPS 模块约定（2026-07-19 建立）
+
+### 设计定位
+
+MPS（主生产计划）根据销售订单、预测需求和库存水平，生成中长期的主生产计划。MPS 是 MES 的上游——MPS 告诉 MES"何时生产多少什么产品"，MES 负责"如何生产"。MPS 同时是 APS 的输入来源，经过 APS 的精细排程后形成可执行的设备级分钟级计划。粗产能检查（RCCP）利用 core 的 `FactoryCapacityProfile` + `BottleneckDetector` 进行可行性校验。
+
+### Core 层新增（供跨模块引用）
+
+| 类型 | 文件 | 说明 |
+|------|------|------|
+| 接口 | `batch/IProductionPlan.java` | ⭐ 生产计划抽象 + IPlanItem 嵌套接口；供 MES/APS/ERP 编译期引用 |
+| 接口 | `batch/IDemandSource.java` | ⭐ 需求来源抽象；供 ERP/SCM/APS 编译期引用 |
+| 事件常量 | `event/types/MpsEventTypes.java` | ⭐ 8 个领域事件常量（与 DmsEventTypes/EquipEventTypes/IotEventTypes/PlmEventTypes/LimsEventTypes 同包 `com.byz.factory.event.types`） |
+
+### MPS 模型
+
+| 文件 | 继承 | 实现 | 说明 |
+|------|------|------|------|
+| `model/ProductionPlan.java` | `BaseLifecycleEntity<ProductionPlanStatus>` | `IProductionPlan` | 生产计划核心实体：完整状态机 + 6 个业务便捷方法 + 领域事件发布 + PlanItem 内部类 + IExpand 文档 |
+| `model/DemandSource.java` | `BaseEntity` | `IDemandSource` | 需求来源：销售订单/预测/安全库存/手工录入 + 4 个业务方法 + 3 个查询方法 |
+| `model/DemandSourceType.java` | — | — | 需求来源枚举：SALES_ORDER / FORECAST / SAFETY_STOCK / MANUAL |
+| `model/CapacityCheck.java` | record | — | 粗产能检查结果值对象：PASS/WARNING/FAIL + 3 个工厂方法 + isAcceptable() |
+
+### 服务接口
+
+| 文件 | 说明 |
+|------|------|
+| `service/MpsService.java` | 14 方法：计划 CRUD(create/getPlan/listPlans/addPlanItem) + 生命周期 6 步(approve/reject/release/start/complete/close) + 需求管理(registerDemand/getDemands) + 粗产能检查(checkCapacity) |
+
+### 约定规则
+
+1. **跨模块接口** — MPS 实体通过 core `batch/` 包中的接口暴露（`IProductionPlan`、`IDemandSource`）；MES 通过 IProductionPlan 获取工单来源计划，APS 通过 IProductionPlan 获取排程输入，ERP 通过 IDemandSource 提供需求数据。PlanItem 实现 IPlanItem 嵌套接口，模式与 IPurchaseOrder.IPurchaseOrderItem 一致
+2. **状态机** — 使用 core 的 `ProductionPlanStatus`（实现 `ILifecycle.StatusEnum`，DRAFT→APPROVED→RELEASED→IN_PROGRESS→COMPLETED→CLOSED；驳回路径 APPROVED→DRAFT）；`transition()` 自动校验非法转换，CLOSED 为终态不可再转换
+3. **模型继承** — 有状态实体（ProductionPlan）继承 `BaseLifecycleEntity<S>` + 实现 core 接口；无状态记录（DemandSource）继承 `BaseEntity` + 实现 core 接口；CapacityCheck 为不可变值 record
+4. **IExpand 约定** — `mps.periodType` / `mps.periodStart` / `mps.periodEnd` / `mps.approvedBy` / `mps.totalQuantity` / `mps.itemCount` 挂载在 ProductionPlan 上；`mps.sourceType` / `mps.referenceNo` / `mps.customer` 挂载在 DemandSource 上
+5. **业务便捷方法** — ProductionPlan 对外的语义化方法封装状态转换 + 事件发布，调用方不直接操作 `setStatus()`；方法：`approve(approvedBy)` / `reject()` / `release()` / `start()` / `complete()` / `close()`；DemandSource 提供 `register(sourceType, customer)` / `register(sourceType)` / `setPriority(priority)`
+6. **领域事件** — 事件常量在 `MpsEventTypes` 中统一管理，遵循 `{module}.{entity}.{past_tense}` 命名约定；ProductionPlan 业务方法内部通过 `DomainEventPublisher` 发布对应事件；`mps.plan.released` 事件是 MPS→MES 的关键契约（MES 订阅后为每个 PlanItem 生成工单）
+7. **粗产能检查（RCCP）** — `checkCapacity` 应利用 core 的 `FactoryCapacityProfile`（工厂产能画像）和 `BottleneckDetector`（瓶颈识别）进行计算；CapacityCheck 为结果值对象，提供 `pass/warning/fail` 三个工厂方法和 `isAcceptable()` 查询
+8. **PlanItem 模式** — PlanItem 为 ProductionPlan 的静态内部类（@Data + 全参构造），实现 IPlanItem 接口；使用 Lombok @Data 生成 getter（非 record 的 component 访问器），确保与 IPlanItem 接口的 getter 方法签名匹配
+9. **测试规范** — Given-When-Then + `methodName_condition_expectedResult` + `@DisplayName` 中文描述；覆盖构造、状态转换（正常+驳回+非法+终态+全生命周期）、业务便捷方法、PlanItem 增删、查询方法、DemandSource 注册/查询、DemandSourceType 枚举、CapacityCheck 工厂方法/isAcceptable、事件命名约定、IExpand、模块加载
+10. **待实现** — MpsService 实现类、Rest 控制器、具体产能计算逻辑（集成 FactoryCapacityProfile + BottleneckDetector）、需求优先级自动排序算法
+
+### 跨模块事件契约
+
+> 其他模块通过 `DomainEventPublisher.subscribe(MpsEventTypes.XXX, handler)` 订阅。
+
+| 事件 | 订阅方 | 用途 |
+|------|--------|------|
+| `mps.plan.released` | **MES** | 已发布计划触发生成工单 |
+| `mps.plan.created` / `.approved` / `.released` | **APS** | 更新排程输入数据 |
+| `mps.plan.started` / `.completed` / `.closed` | **BI** | 生产计划执行看板 |
+| `mps.demand.registered` | **APS, BI** | 需求变更影响排程和统计 |
+| `mps.capacity.checked` | **APS, BI** | 产能分析结果供排程优化和看板展示 |
+
+---
+
+## WMS 模块约定（2026-07-19 建立）
+
+### 设计定位
+
+WMS 管理物料/成品的仓储运作——收货、上架、拣料、发运、线边仓、库存盘点。WMS 是 MES 和 LIMS 的物料来源——没有仓储，投料和称量在真空中操作。向上为 MES（物料配送）、LIMS（称量批次）、QMS（来料检验）、ERP（库存过账）、SCM（采购收货）提供仓储数据支撑。
+
+### Core 层新增（供跨模块引用）
+
+| 类型 | 文件 | 说明 |
+|------|------|------|
+| 接口 | `batch/IStorage.java` | ⭐ 库位抽象：编码+仓库+区域+货架+层+位+存储类型+容量；供 MES/SCM 引用 |
+| 接口 | `batch/IReceipt.java` | ⭐ 收货单抽象 + IReceiptItem 内嵌接口；供 SCM/QMS 引用 |
+| 接口 | `batch/IPickingTask.java` | ⭐ 拣料任务抽象 + IPickingTaskItem 内嵌接口；供 MES/LIMS 引用 |
+| 接口 | `batch/IInventorySnapshot.java` | ⭐ 库存快照抽象：在手/已分配/可用/待检/不合格+有效期；供 ERP/MES 引用 |
+| 状态枚举 | `batch/PickingTaskStatus.java` | PENDING→IN_PROGRESS→PICKED→DELIVERED；+CANCELLED；实现 ILifecycle.StatusEnum |
+| 值枚举 | `batch/StorageType.java` | AMBIENT / COLD / FROZEN / HAZARDOUS |
+| 值枚举 | `batch/PickingType.java` | FULL / STAGED / JIT |
+| 值枚举 | `batch/MaterialStatus.java` | QUARANTINE / RELEASED / REJECTED（用于 ReceiptItem 和库存物料质量状态） |
+
+### WMS 模型
+
+| 文件 | 继承 | 实现 | 说明 |
+|------|------|------|------|
+| `model/Storage.java` | `BaseEntity` | `IStorage` | 库位实体：层次结构(仓库→区域→货架→层→位) + StorageType + 容量 + IExpand 文档 |
+| `model/Receipt.java` | `BaseLifecycleEntity<ReceiptStatus>` | `IReceipt` | 收货单：完整状态机 + 5 业务便捷方法(receive/complete/close/addItem/acceptItem/rejectItem) + ReceiptItem 内部类 + IExpand 文档 |
+| `model/PickingTask.java` | `BaseLifecycleEntity<PickingTaskStatus>` | `IPickingTask` | 拣料任务：完整状态机 + 5 业务便捷方法(start/completePicking/deliver/cancel/addItem/pickItem) + PickingTaskItem 内部类 + IExpand 文档 |
+| `model/InventorySnapshot.java` | `BaseEntity` | `IInventorySnapshot` | 库存快照：8 业务方法(addStock/removeStock/allocate/deallocate/quarantine/release/reject/count) + 可用量动态计算 + 负数防护 + IExpand 文档 |
+
+### 服务接口
+
+| 文件 | 说明 |
+|------|------|
+| `service/WmsService.java` | 20 方法：收货管理(createReceipt/acceptAndPutaway/completeReceipt/closeReceipt/findReceipt) + 拣料管理(createPickingTask/startPicking/completePicking/deliverPicking/cancelPicking/findPickingTask) + 库存管理(queryAvailableStock/getInventorySnapshot/getInventorySnapshots/allocateStock/deallocateStock) + 盘点管理(createCountTask) |
+
+### 约定规则
+
+1. **跨模块接口** — WMS 实体通过 core `batch/` 包中的接口暴露（`IStorage`、`IReceipt`、`IPickingTask`、`IInventorySnapshot`）；其他模块通过接口引用仓储数据，无需直接依赖 WMS 模块
+2. **状态机** — `ReceiptStatus`（已有）、`PickingTaskStatus`（新增）放 core `batch/` 包中，实现 `ILifecycle.StatusEnum`；Receipt/PickingTask 继承 `BaseLifecycleEntity<S>` 获得 `transition()` 校验
+3. **模型继承** — 有状态实体（Receipt, PickingTask）继承 `BaseLifecycleEntity<S>` + 实现 core 接口；无状态记录（Storage, InventorySnapshot）继承 `BaseEntity` + 实现 core 接口
+4. **IExpand 约定** — `wms.location` / `wms.warehouse` / `wms.zone` / `wms.rack` / `wms.level` / `wms.position` / `wms.storageType` / `wms.capacity` 挂载在 Storage 上；`wms.receiptNo` / `wms.sourceType` / `wms.referenceNo` / `wms.supplierCode` 挂载在 Receipt 上；`wms.pickingTask` / `wms.workOrderNo` / `wms.batchNo` / `wms.pickingType` 挂载在 PickingTask 上；`wms.materialCode` / `wms.batchNo` / `wms.locationCode` / `wms.expiryDate` / `wms.lastCounted` / `wms.status` 挂载在 InventorySnapshot 上
+5. **业务便捷方法** — Receipt: `receive(receivedBy)` / `complete()` / `close()` / `addItem()` / `acceptItem(materialCode, locationCode)` / `rejectItem(materialCode)` / `isFullyProcessed()`；PickingTask: `start()` / `completePicking()` / `deliver()` / `cancel()` / `addItem()` / `pickItem()` / `isFullyPicked()`；InventorySnapshot: `addStock(qty)` / `removeStock(qty)` / `allocate(qty)` / `deallocate(qty)` / `quarantine(qty)` / `release(qty)` / `reject(qty)` / `count(qty, countedAt)` + 内置负数防护和上限校验
+6. **跨模块协作** — SCM→WMS（采购订单驱动收货）、WMS←SCM（收货结果更新 PO 进度）、MES→WMS（工单驱动拣料）、WMS→MES（拣料完成确认投料）、WMS→LIMS（物料批次供称量）、WMS→QMS（来料待检通知）、WMS←QMS（来料检结果→放行/退货）、WMS→ERP（库存变更触发财务过账）
+7. **Storage 无生命周期** — 库位不需要状态机（物理位置的创建/禁用由管理操作控制），不实现 ILifecycle；locationCode 映射到继承的 code
+8. **InventorySnapshot 无生命周期** — 库存快照是时点数据记录，不是流程驱动的实体；availableQty 由 getter 动态计算（onHandQty − allocatedQty，负数时返回 0）
+9. **ReceiptItem/PickingTaskItem 模式** — 明细项为静态内部类（@Data + 无参/全参构造），实现对应的嵌套接口；使用 Lombok @Data 生成 getter（非 record 的 component 访问器），确保与接口的 getter 方法签名匹配
+10. **sourceType 保留 String** — 对接不同外部系统（ERP/SCM）时灵活，不限定枚举值，避免因外部系统变更而修改 core
+11. **测试规范** — Given-When-Then + `methodName_condition_expectedResult` + `@DisplayName` 中文描述；覆盖构造、状态转换（正常+非法+终态+取消路径）、业务便捷方法、库存操作（入库/出库/分配/释放/待检/放行/拒收/盘点）、可用量计算、负数防护、接口契约、枚举验证
+12. **待实现** — WmsService 实现类、REST 控制器、条码/RFID 扫码（IoT 集成）、库存事务回传 ERP、批次策略引擎（FIFO/FEFO/LEFO）、线边仓管理
+
+### 跨模块事件契约
+
+> 其他模块通过 `DomainEventPublisher.subscribe(WmsEventTypes.XXX, handler)` 订阅。事件常量待后续阶段创建。
+
+| 事件 | 订阅方 | 用途 |
+|------|--------|------|
+| `wms.receipt.created` | **QMS, SCM** | QMS 创建来料检任务 / SCM 更新 PO 收货状态 |
+| `wms.receipt.completed` | **ERP, SCM** | ERP 库存过账 / SCM 更新 PO 完成状态 |
+| `wms.receipt.closed` | **ERP** | ERP 应收对账 |
+| `wms.item.accepted` | **QMS** | 来料检放行 → 库存可用 |
+| `wms.item.rejected` | **SCM** | 通知供应商退货 |
+| `wms.picking.created` | **MES, LIMS** | MES 追踪物料配送进度 / LIMS 准备称量 |
+| `wms.picking.delivered` | **MES, LIMS** | MES 确认投料就绪 / LIMS 开始称量 |
+| `wms.inventory.changed` | **ERP, MES** | ERP 同步库存 / MES 更新物料可用性 |
+
+---
+
 ## 更新记录
 
 | 日期 | 内容 |
 |------|------|
+| 2026-07-19 | **WMS 模块约定完成**：4 个 core 接口(IStorage/IReceipt/IPickingTask/IInventorySnapshot) + 4 个 core 枚举(PickingTaskStatus/StorageType/PickingType/MaterialStatus) + 4 个模型(Storage重构+Receipt重构+PickingTask新建+InventorySnapshot新建) + WmsService扩展(4→20方法) + 33 个测试 |
+| 2026-07-19 | **LIMS 模块约定完成**：3 个 core 状态枚举(FormulaStatus/WeighingTaskStatus/BatchRecordStatus) + 3 个 core 接口(IFormula/IWeighingTask/IBatchRecord) + LimsEventTypes(9事件) + 4 个模型(Formula重写+WeighingTask+WeighingItem+BatchRecord) + 3 个服务接口(FormulaService 10方法/WeighingTaskService 7方法/BatchRecordService 8方法) + 脚本迁移(mes→lims) + 新建批记录生成脚本 + 47 个测试 |
+| 2026-07-19 | **MPS 模块约定完成**：2 个 core 接口(IProductionPlan/IDemandSource) + MpsEventTypes(8事件) + 4 个模型(ProductionPlan增强 + DemandSource + DemandSourceType + CapacityCheck) + MpsService扩展(4→14方法) + 47 个测试 |
 | 2026-07-19 | **DMS 模块约定完成**：3 个 core 接口/枚举(IDocument/DocumentCategory/DocumentStatus扩展) + DmsEventTypes(8事件) + 3 个模型(Document + ApprovalWorkflow + ApprovalStep) + DmsService 扩展(5→19方法) + 30 个测试 |
 | 2026-07-19 | **IoT 模块约定完成**：5 个 core 接口/枚举(IDeviceConnection/ITagValue/ICommand/IAlarmEvent/CommandStatus) + IotEventTypes(9事件) + 4 个模型 + 2 个服务接口(IotGatewayService 13方法/IProtocolAdapter) + 46 个测试 |
 | 2026-07-19 | **Equip → Core 回归审核通过**：4 个议题决议（IEquipmentBinding渐进迁移/BOM引用Recipe双轨/FactoryCapacityProfile双轨/EventTypes迁至event.types包）；详见 `docs/architecture/modules/equip-core-regression.md` 五-六章 |

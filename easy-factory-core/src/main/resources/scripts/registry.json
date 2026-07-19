@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "updatedAt": "2026-07-12T00:00:00Z",
+  "updatedAt": "2026-07-19T00:00:00Z",
   "scripts": [
     {
       "id": "qms.quality-gate.v1",
@@ -15,16 +15,28 @@
       "timeoutMs": 30000
     },
     {
-      "id": "mes.weighing-check.v1",
-      "path": "mes/weighing_check.js",
+      "id": "lims.weighing-check.v1",
+      "path": "lims/weighing_check.js",
       "version": "1.0.0",
-      "module": "mes",
+      "module": "lims",
       "status": "ACTIVE",
       "name": "称量防错",
       "description": "对比天平读数与配方量，超差时拒绝并记录偏差",
       "author": "engineer-b",
-      "since": "2026-07-12",
+      "since": "2026-07-19",
       "timeoutMs": 10000
+    },
+    {
+      "id": "lims.batch-record-generate.v1",
+      "path": "lims/batch_record_generate.js",
+      "version": "1.0.0",
+      "module": "lims",
+      "status": "ACTIVE",
+      "name": "批记录生成",
+      "description": "根据称量任务数据和工序执行记录自动生成批记录",
+      "author": "system",
+      "since": "2026-07-19",
+      "timeoutMs": 15000
     },
     {
       "id": "qms.spc-check.v1",
