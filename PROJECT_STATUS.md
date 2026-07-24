@@ -12,7 +12,7 @@
 | 接口 | 60+ | process/resource/factory/batch/equip/scm/lims/wms/iot/eam/mps/dms/erp 跨模块契约 |
 | 状态枚举 | 20 | 全部实现 ILifecycle.StatusEnum |
 | 纯值枚举 | 10 | SupplierStatus/MaterialStatus/MaintenanceType 等 |
-| 事件常量类 | 8 | MesEventTypes/EquipEventTypes/PlmEventTypes/LimsEventTypes/MpsEventTypes/DmsEventTypes/IotEventTypes/ApsEventTypes |
+| 事件常量类 | 10 | MesEventTypes/EquipEventTypes/PlmEventTypes/LimsEventTypes/MpsEventTypes/DmsEventTypes/IotEventTypes/ApsEventTypes/QmsEventTypes/AndonEventTypes |
 | 操作分析模型 | 15+ | ProcessRouteMatcher/BottleneckDetector/ProductionLeadTime 等 |
 | 测试 | 600+ | core 182 + 各模块集成测试 |
 | 总计 | 91 | 详见 domain-model.md v5 |
@@ -26,7 +26,7 @@
 - [x] 批次追溯: IBatch (含 WIP 位置+物料谱系) / ITraceable (before/after 快照)
 - [x] 20 个状态枚举全部实现 (跨 10 个模块包)
 - [x] 23 个跨模块接口 (equip/scm/lims/wms/iot/eam/mps/dms/erp 领域包)
-- [x] 8 个事件类型常量类 (event/types/，含跨模块订阅指南)
+- [x] 10 个事件类型常量类 (event/types/，含 QmsEventTypes + AndonEventTypes + 跨模块订阅指南)
 - [x] 生命周期: ILifecycle<S> 泛型状态机 + BaseLifecycleEntity
 - [x] 领域事件: IDomainEvent + DomainEventPublisher (前缀匹配+unsubscribe)
 - [x] 审计追踪: IAuditable + AuditTrail record + IElectronicSignature + SignatureMeaning
@@ -69,7 +69,7 @@
 | 模块 | 状态 | 核心模型 | 核心Service接口 |
 |------|------|---------|---------------|
 | `mes` | 约定已建立 | MesWorkOrder + ProcessRecord + ActionRecord | WorkOrderService (11方法) |
-| `qms` | 骨架 | InspectionOrder | InspectionService |
+| `qms` | 约定已建立 | InspectionOrder + InspectionPlan + InspectionRecord + Deviation + Capa + QmsEventTypes | InspectionService (12方法) + DeviationService (13方法) + CapaService (10方法) |
 | `plm` | 约定已建立 | ProcessTemplate, Blueprint, ProcessParameter | BlueprintService |
 | `equip` | 约定完成 | Equipment + EquipmentParameter + EquipmentRecipe + OEMetrics + EquipEventTypes | EquipmentService (16方法) |
 | `lims` | 约定已建立 | Formula + WeighingTask + WeighingItem + BatchRecord + LimsEventTypes | FormulaService (10方法) + WeighingTaskService (7方法) + BatchRecordService (8方法) |
@@ -79,7 +79,7 @@
 | `mps` | 约定完成 | ProductionPlan + DemandSource + DemandSourceType + CapacityCheck + MpsEventTypes | MpsService (14方法) |
 | `aps` | 约定已建立 | Schedule + ScheduledTask + ResourceCalendar + RescheduleTrigger + SchedulingRule + ApsEventTypes | ApsService (5方法) |
 | `wms` | 约定已建立 | Storage, Receipt, PickingTask, InventorySnapshot | WmsService (20方法) |
-| `andon` | 骨架 | AndonCall | AndonService |
+| `andon` | 约定已建立 | AndonCall(AndonStatus) + EscalationRule + AndonDashboard | AndonService (19方法) |
 | `bi` | 骨架 | KpiSnapshot | DashboardService |
 | `scm` | 约定已建立 | Supplier, PurchaseOrder(PurchaseOrderStatus) | ScmService |
 | `dms` | 约定已建立 | Document + ApprovalWorkflow + ApprovalStep + DmsEventTypes | DmsService (19方法) |
@@ -243,11 +243,11 @@
 
 ### andon — 安灯系统
 
-| # | 任务 |
-|---|------|
-| N1 | AndonCall 触发 + 状态流转：OPEN→ACKNOWLEDGED→RESOLVED/ESCALATED→CLOSED |
-| N2 | 逐级上报规则 — 静态配置数据库表，操作工→班组长→车间主任→厂长 |
-| N3 | 多源事件订阅 — mes.process.interrupted + equip.fault + qms.spc.outOfControl |
+| # | 任务 | 状态 |
+|---|------|------|
+| N1 | AndonCall 触发 + 状态流转：OPEN→ACKNOWLEDGED→RESOLVED/ESCALATED→CLOSED | ✅ 已完成 |
+| N2 | 逐级上报规则 — 静态配置数据库表，操作工→班组长→车间主任→厂长 | ✅ 已完成 |
+| N3 | 多源事件订阅 — mes.process.interrupted + equip.fault + qms.spc.outOfControl | ✅ 约定已建立（AndonEventTypes 7事件 + 订阅指南） |
 
 ### dms — 文档管理
 
@@ -967,6 +967,155 @@ APS（高级排程系统）在 MPS 确定"生产什么、生产多少、何时�
 
 ---
 
+## QMS 模块约定（2026-07-24 建立）
+
+### 设计定位
+
+QMS（质量管理系统）基于 core 的工序/动作模型，在制造过程中内嵌质量管理。核心功能：检验工序管理、SPC 统计过程控制、偏差/CAPA 处理、质量门禁。设计理念：**质量长在工序里，不是贴在产品上。**
+
+### 设计裁定（design-decisions.md §3.1-3.3）
+
+| 裁定 | 条款 | 执行 |
+|------|------|------|
+| 检验方案存储 | §3.1 | 结构化字段为主，IExpand 为辅 |
+| SPC 控制限 | §3.2 | 双模式：固定值（IProcessParameter）+ 自动计算（IoT 历史数据） |
+| 偏差处理流程 | §3.3 | 自动暂停 + 人工介入（QA 判定） |
+
+### Core 层新增（供跨模块引用）
+
+| 类型 | 文件 | 说明 |
+|------|------|------|
+| 接口 | `batch/IInspectionRecord.java` | 检验记录抽象，供 MES/LIMS/DMS 引用 |
+| 接口 | `batch/IDeviation.java` | 偏差抽象，供 MES/Andon/DMS/EAM 引用 |
+| 接口 | `batch/ICapa.java` | CAPA 抽象，供 DMS/Andon/MES 引用 |
+| 值枚举 | `batch/InspectionType.java` | IQC / IPQC / FQC / OQC |
+| 值枚举 | `batch/DeviationSeverity.java` | MINOR / MAJOR / CRITICAL |
+| 值枚举 | `batch/DeviationDisposition.java` | REWORK / CONCESSION / REJECT |
+| 状态枚举 | `batch/DeviationStatus.java` | OPEN→INVESTIGATING→DISPOSITIONED→RESOLVED→CLOSED; +CANCELLED |
+| 状态枚举 | `batch/CapaStatus.java` | OPEN→ROOT_CAUSE→IN_PROGRESS→VERIFIED→CLOSED; +CANCELLED |
+| 事件常量 | `event/types/QmsEventTypes.java` | ⭐ 18 个领域事件常量（与 PlmEventTypes/EquipEventTypes 等同包） |
+
+### QMS 模型
+
+| 文件 | 继承 | 实现 | 说明 |
+|------|------|------|------|
+| `model/InspectionOrder.java` | `BaseLifecycleEntity<InspectionStatus>` | `IInspectionOrder` | ⭐ 检验指令核心：完整状态机(PENDING→IN_PROGRESS→PASSED/FAILED→CLOSED) + 5 业务便捷方法 + 领域事件发布 |
+| `model/InspectionPlan.java` | `BaseEntity` | — | 检验方案：结构化字段 + InspectionItem 内部类 + 版本管理 |
+| `model/InspectionRecord.java` | `BaseEntity` | `IInspectionRecord` | 检验记录：自动判定(record) + 让步接收(concession) |
+| `model/Deviation.java` | `BaseLifecycleEntity<DeviationStatus>` | `IDeviation` | ⭐ 偏差核心：完整状态机 + 8 业务便捷方法 + requiresCapa() 智能判定 |
+| `model/Capa.java` | `BaseLifecycleEntity<CapaStatus>` | `ICapa` | ⭐ CAPA 核心：完整状态机 + 5 业务便捷方法 + isOverdue() 逾期判定 |
+
+### 服务接口
+
+| 文件 | 说明 |
+|------|------|
+| `service/InspectionService.java` | 12 方法：方案管理(createPlan/findPlansByProduct/findPlanByProductAndProcess/getPlan) + 检验指令(createOrder/startInspection/submitResult/completeInspection/closeOrder/findOrder/findOrdersByWorkOrder) + 记录查询(getRecords) |
+| `service/DeviationService.java` | 13 方法：偏差全生命周期(createDeviation/startInvestigation/completeInvestigation/dispose/linkCapa/resolve/close/cancel) + 查询(findDeviation/findDeviationsByInspection/findDeviationsByWorkOrder/getActiveDeviations) |
+| `service/CapaService.java` | 10 方法：CAPA 全生命周期(createCapa/analyzeRootCause/executeActions/verify/close/cancel) + 查询(findCapa/findCapasByDeviation/getOverdueCapas/getActiveCapas) |
+
+### 约定规则
+
+1. **跨模块接口** — QMS 实体通过 core `batch/` 包中的接口暴露（`IInspectionOrder`（已有）、`IInspectionRecord`、`IDeviation`、`ICapa`）；其他模块通过接口引用检验/偏差/CAPA，无需直接依赖 QMS
+2. **状态机** — `InspectionStatus`（已有）、`DeviationStatus`、`CapaStatus` 放 core `batch/` 包中，实现 `ILifecycle.StatusEnum`；InspectionOrder/Deviation/Capa 继承 `BaseLifecycleEntity<S>` 获得 `transition()` 校验
+3. **模型继承** — 有状态实体（InspectionOrder, Deviation, Capa）继承 `BaseLifecycleEntity<S>` + 实现 core 接口；无状态记录（InspectionPlan, InspectionRecord）继承 `BaseEntity` + 实现 core 接口
+4. **IExpand 约定** — `qms.inspectionType` / `qms.aql` / `qms.specLimits` 挂载在 InspectionOrder 上；`qms.deviation.source` / `qms.deviation.capaCode` 挂载在 Deviation 上；`qms.capa.problemDescription` / `qms.capa.verificationResult` 挂载在 Capa 上
+5. **业务便捷方法** — InspectionOrder: `startInspection(inspector)` / `submitResult(record)` / `completeInspection()` / `close()` + 查询 `isFinished()` / `isPassed()`；Deviation: `startInvestigation()` / `completeInvestigation()` / `dispose()` / `linkCapa()` / `resolve()` / `close()` / `cancel()` + 查询 `requiresCapa()`；Capa: `analyzeRootCause()` / `executeActions()` / `verify()` / `close()` / `cancel()` + 查询 `isOverdue()`
+6. **领域事件** — 事件常量在 `QmsEventTypes` 中统一管理（18 个）：检验 5 + 偏差 5 + CAPA 5 + SPC 3；遵循 `{module}.{entity}.{past_tense}` 命名约定；**模型层发布事件**（参照 Phase 1-2 既有模式），Service 实现层统一调度
+7. **偏差处理流程** — MES 自动暂停 → QMS 自动创建 Deviation → **人工判定**（QA 决定 REWORK/CONCESSION/REJECT）→ CAPA（如需）→ 通知 MES 恢复（design-decisions.md §3.3）
+8. **CAPA 触发规则** — CRITICAL 偏差必须 CAPA；MAJOR 偏差非让步需 CAPA；MINOR 偏差不需 CAPA（`requiresCapa()` 方法封装此逻辑）
+9. **品质门禁** — 脚本 `qms.quality-gate.v1` 实现判定逻辑（放行/让步/拒收），FAIL 时通过 `qms.createDeviation()` 创建偏差并抛出异常中断工序
+10. **SPC 控制** — 脚本 `qms.spc-check.v1` 实现 Western Electric 4 条规则（3σ 超限/连续9点同侧/连续6点趋势/连续14点交替），控制限支持固定值和自动计算两种模式（design-decisions.md §3.2）
+11. **测试规范** — Given-When-Then + `methodName_condition_expectedResult` + `@DisplayName` 中文描述；67 个测试覆盖：构造、状态转换（正常+驳回+非法+终态+完整生命周期+取消路径）、业务便捷方法、事件发布/负载验证、跨模块接口实现验证、IExpand、枚举定义（值枚举+状态枚举转换规则）、事件命名约定、同状态幂等、BigDecimal 比较精度
+12. **待实现** — InspectionService/DeviationService/CapaService 实现类、SPC 实时计算引擎、IQualityAction 实现类、IoT 数据订阅消费、REST 控制器
+
+### 跨模块事件契约
+
+> 其他模块通过 `DomainEventPublisher.subscribe(QmsEventTypes.XXX, handler)` 订阅。
+
+| 事件 | 订阅方 | 用途 |
+|------|--------|------|
+| `qms.inspection.created` | **IoT** | 激活检验用仪器数据采集 |
+| `qms.inspection.passed` | **MES** | 检验通过后恢复工序流转 |
+| `qms.inspection.failed` | **MES** | 检验失败后暂停工序，触发偏差 |
+| `qms.inspection.completed` | **LIMS, BI** | LIMS 更新批记录 / BI 质量看板 |
+| `qms.deviation.created` | **Andon** | 偏差创建时触发安灯呼叫 |
+| `qms.deviation.dispositioned` | **DMS** | 触发处置审批流文档 |
+| `qms.deviation.resolved` | **MES** | 偏差解决后恢复生产 |
+| `qms.capa.created` | **DMS** | CAPA 创建后触发审批流 |
+| `qms.capa.verified` | **DMS** | CAPA 验证完成后归档 |
+| `qms.capa.closed` | **BI** | 更新质量看板统计 |
+| `qms.spc.warning` | **Andon** | SPC 预警通知 |
+| `qms.spc.out_of_control` | **Andon, MES** | SPC 失控触发安灯 + 暂停工序 |
+
+---
+
+## Andon 模块约定（2026-07-25 建立）
+
+### 设计定位
+
+Andon（安灯系统）是**跨模块异常响应中枢**——接收来自 MES（工序中断）、IoT（设备报警）、QMS（SPC 失控/偏差创建）的多源事件，触发安灯呼叫并执行逐级上报。Andon 是独立模块（design-decisions.md §3.4），通过领域事件与其他模块松耦合。
+
+### Core 层新增（供跨模块引用）
+
+| 类型 | 文件 | 说明 |
+|------|------|------|
+| 状态枚举 | `batch/AndonStatus.java` | OPEN→ACKNOWLEDGED→RESOLVED\|ESCALATED→CLOSED；OPEN 可直接 ESCALATED（紧急情况） |
+| 事件常量 | `event/types/AndonEventTypes.java` | ⭐ 7 个领域事件常量（5 呼叫生命周期 + 2 规则管理；与 QmsEventTypes/MesEventTypes 等同包 `com.byz.factory.event.types`） |
+
+### Andon 模型
+
+| 文件 | 继承 | 实现 | 说明 |
+|------|------|------|------|
+| `model/AndonCall.java` | `BaseLifecycleEntity<AndonStatus>` | — | ⭐ 安灯呼叫核心实体：完整状态机 + 5 业务便捷方法 + 领域事件发布 + IExpand 文档 |
+| `model/EscalationRule.java` | `BaseEntity` | — | 上报规则：多级 EscalationLevel 上报链 + AutoStop 策略 + 启用/禁用 |
+| `model/AndonDashboard.java` | — (record) | — | 看板数据值对象：按严重程度/触发类型分组的活跃呼叫统计 |
+
+### 值枚举（模块内）
+
+| 文件 | 说明 |
+|------|------|
+| `model/TriggerType.java` | EQUIPMENT_FAULT / QUALITY_ISSUE / MATERIAL_SHORTAGE / SAFETY_INCIDENT / PROCESS_DELAY / OTHER |
+| `model/AndonSeverity.java` | INFO / WARNING / CRITICAL / EMERGENCY |
+| `model/AndonSource.java` | MANUAL / AUTO |
+| `EscalationRule.AutoStop` | NONE / PAUSE_PROCESS / STOP_LINE / STOP_FACTORY（内部枚举） |
+| `EscalationRule.EscalateCondition` | TIMEOUT / NO_RESPONSE（内部枚举） |
+
+### 服务接口
+
+| 文件 | 说明 |
+|------|------|
+| `service/AndonService.java` | 19 方法：呼叫管理(trigger/acknowledge/escalate/resolve/close) + 呼叫查询(findCall/getActiveCalls/findCallsByWorkOrder/findCallsByEquipment/getUrgentCalls/getDashboard) + 规则管理(createRule/addEscalationLevel/findRule/getActiveRules/disableRule/enableRule) |
+
+### 约定规则
+
+1. **跨模块接口** — Andon 通过事件订阅其他模块（MES/IoT/QMS/APS），不暴露 core 接口供其他模块编译期引用；其他模块通过 `AndonService` 方法调用或订阅 `AndonEventTypes` 事件协作
+2. **状态机** — 使用 core 的 `AndonStatus`（实现 `ILifecycle.StatusEnum`）；AndonCall 继承 `BaseLifecycleEntity<AndonStatus>` 获得 `transition()` 校验；OPEN 可直接 ESCALATED（紧急安全事件场景）；CLOSED 终态不可转换
+3. **模型继承** — 有状态实体（AndonCall）继承 `BaseLifecycleEntity<S>`；无状态记录（EscalationRule）继承 `BaseEntity`；AndonDashboard 为不可变值 record
+4. **IExpand 约定** — `andon.call.escalationLevel` / `andon.call.escalatedAt` / `andon.call.acknowledgedBy` / `andon.call.acknowledgedAt` / `andon.call.resolution` / `andon.call.closedAt` 挂载在 AndonCall 上；`andon.rule.autoStop` / `andon.rule.enabled` / `andon.rule.createdBy` 挂载在 EscalationRule 上
+5. **业务便捷方法** — AndonCall: `acknowledge(acknowledgedBy)` / `escalate(reason)` / `resolve(resolution)` / `close()` + 查询 `isActive()` / `isUrgent()` / `isAutoTriggered()` / `getDurationSeconds()` + 关联 `linkWorkOrder()` / `linkProcess()` / `linkEquipment()`；EscalationRule: `addLevel()` / `getLevel(n)` / `getMaxLevel()` / `enable()` / `disable()` / `setAutoStopPolicy()`
+6. **领域事件** — 事件常量在 `AndonEventTypes` 中统一管理（7 个：5 呼叫 + 2 规则）；遵循 `{module}.{entity}.{past_tense}` 命名约定；**模型层发布事件**（参照 Phase 1-2 既有模式）
+7. **上报规则** — 静态配置（数据库表），非脚本化（design-decisions.md §3.4）；上报链：操作工(L0) → 班组长(L1,0min) → 车间主任(L2,5min) → 生产经理(L3,15min) → 厂长(L4,30min)；EscalationLevel 为 EscalationRule 静态内部类，含 level/timeoutMinutes/notifyRoles/escalateOn
+8. **升级联动** — EQUIPMENT_FAULT → 通知 EAM 创建维护工单；QUALITY_ISSUE → 通知 QMS 创建偏差；EMERGENCY → 通知 MES 暂停产线；ESCALATED L4 → AutoStop 自动执行（PAUSE_PROCESS/STOP_LINE/STOP_FACTORY）
+9. **多源事件订阅** — Andon 订阅 `mes.process.interrupted` / `equip.fault.reported` / `qms.spc.out_of_control` / `qms.deviation.created` / `iot.alarm.triggered` / `aps.task.delayed` 自动创建安灯呼叫
+10. **逐级上报逻辑** — escalate() 从 OPEN 或 ACKNOWLEDGED 进入 ESCALATED 状态；每次调用 escalationLevel +1（ESACALATED 状态内持续递增）；CLOSED/RESOLVED 状态拒接上报
+11. **测试规范** — Given-When-Then + `methodName_condition_expectedResult` + `@DisplayName` 中文描述；55 个测试覆盖：构造、状态转换（正常+非法+终态+完整生命周期+取消路径）、业务便捷方法、事件发布/载荷验证、IExpand、枚举定义（TriggerType/AndonSeverity/AndonSource/AutoStop/EscalateCondition）、AndonStatus 状态机转换规则、AndonDashboard 值对象、AndonEventTypes 事件命名约定+PREFIX、AndonService 接口契约、综合场景（设备故障完整上报链/安全事件紧急上报/误触发直接关闭/系统自动触发→人工确认→解决）
+12. **待实现** — AndonService 实现类、REST 控制器、通知渠道适配器（企业微信/钉钉 Webhook/短信/邮件/声光报警）、定时扫描超时自动上报、产线物理 Andon 看板对接
+
+### 跨模块事件契约
+
+> 其他模块通过 `DomainEventPublisher.subscribe(AndonEventTypes.XXX, handler)` 订阅。
+
+| 事件 | 订阅方 | 用途 |
+|------|--------|------|
+| `andon.call.created` | **EAM, QMS, BI** | EAM 设备故障→维护工单 / QMS 质量问题→偏差 / BI 安灯看板 |
+| `andon.call.acknowledged` | **IoT** | 确认后取消声光报警 |
+| `andon.call.escalated` | **MES, EAM** | MES 暂停工单/产线 / EAM 创建维护工单 |
+| `andon.call.resolved` | **MES, EAM, QMS** | MES 恢复生产 / EAM 关闭维护工单 / QMS 关闭偏差 |
+| `andon.call.closed` | **BI** | 更新安灯看板统计 |
+| `andon.rule.created` / `andon.rule.updated` | — | 规则变更通知（模块内部使用） |
+
+---
+
 ## CRM 模块（设计文档，待协同）
 
 | 类型 | 说明 |
@@ -1007,4 +1156,6 @@ APS（高级排程系统）在 MPS 确定"生产什么、生产多少、何时�
 | 2026-07-12 | 移除 easy-factory-db（持久化回归各模块） |
 | 2026-07-12 | 8个业务模块骨架创建，编译通过 |
 | 2026-07-12 | 初始创建，core 接口体系完成 |
-| 2026-07-19 | **Core 设计完善 v5**：删除死代码(script/Action/IProcessRoute/ProcessCompatibilityChecker)；新建 10 个模型(IAuditable/AuditTrail/IElectronicSignature/SignatureMeaning/MachineStatus/UOM/IProcessParameter/IMethod/IEnvironment/IBillOfMaterial)；20 个状态枚举全部实现；23 个跨模块接口全部就位；8 个事件类型常量类完整；DomainEventPublisher 前缀匹配+unsubscribe 已修复；IActionModel.execute() 空指针已保护；Noting→Nothing 全局修正；SourceType 扩展至 18 值；计算器泛型化；formatDuration 公共提取；require() 默认值统一；PROJECT_STATUS.md 更新至 v1.0；domain-model.md 更新至 v5；各模块文档追加 AI 协作建议
+| 2026-07-19 | **Core 设计完善 v5**：删除死代码(script/Action/IProcessRoute/ProcessCompatibilityChecker)；新建 10 个模型(IAuditable/AuditTrail/IElectronicSignature/SignatureMeaning/MachineStatus/UOM/IProcessParameter/IMethod/IEnvironment/IBillOfMaterial)；20 个状态枚举全部实现；23 个跨模块接口全部就位；8 个事件类型常量类完整；DomainEventPublisher 前缀匹配+unsubscribe 已修复；IActionModel.execute() 空指针已保护；Noting→Nothing 全局修正；SourceType 扩展至 18 值；计算器泛型化；formatDuration 公共提取；require() 默认值统一；PROJECT_STATUS.md 更新至 v1.0；domain-model.md 更新至 v5；各模块文档追加 AI 协作建议 |
+| 2026-07-24 | **QMS 模块约定建立**：9 个 core 新增(IInspectionRecord/IDeviation/ICapa + InspectionType/DeviationSeverity/DeviationDisposition/DeviationStatus/CapaStatus + QmsEventTypes 18事件) + 5 个模型(InspectionOrder升级+InspectionPlan新建+InspectionRecord新建+Deviation新建+Capa新建) + 3 个服务接口(InspectionService 3→12方法 + DeviationService 13方法 + CapaService 10方法) + 67 个测试
+| 2026-07-25 | **Andon 模块约定建立**：1 个 core 新增(AndonEventTypes 7事件) + 1 个 core 修改(AndonStatus OPEN→ESCALATED 紧急通道) + 3 个值枚举(TriggerType/AndonSeverity/AndonSource) + 2 个内部枚举(AutoStop/EscalateCondition) + 3 个模型(AndonCall重写+EscalationRule新建+AndonDashboard新建) + AndonService 接口扩展(4→19方法) + 55 个测试

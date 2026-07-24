@@ -184,17 +184,25 @@ QMS ← LIMS:  实验室检测结果
 
 ## 遗留问题
 
-### 当前实现
-- [x] `InspectionOrder` — 实现 IInspectionOrder
-- [x] `InspectionService` — 接口已定义，判定逻辑未实现
-- [ ] InspectionPlan / InspectionRecord / Deviation / CAPA — 未创建
-- [ ] SPC 实时计算 — 示例脚本存在但未接入
+### 当前实现（2026-07-24 更新）
+- [x] `InspectionOrder` — 完整状态机 + 业务便捷方法 + 领域事件发布（升级）
+- [x] `InspectionService` — 接口扩展至 12 方法（方案管理 + 检验指令 + 判定逻辑）
+- [x] `InspectionPlan` — 检验方案实体，InspectionItem 内部类（新建）
+- [x] `InspectionRecord` — 检验记录实体，自动判定逻辑（新建）
+- [x] `Deviation` — 偏差实体，完整状态机 + 8 业务便捷方法 + requiresCapa()（新建）
+- [x] `Capa` — CAPA 实体，完整状态机 + 5 业务便捷方法 + isOverdue()（新建）
+- [x] `DeviationService` / `CapaService` — 服务接口已定义（新建）
+- [x] Core 层接口/枚举 — IInspectionRecord / IDeviation / ICapa / InspectionType / DeviationSeverity / DeviationDisposition / DeviationStatus / CapaStatus / QmsEventTypes（新建）
+- [ ] SPC 实时计算引擎 — 示例脚本存在但未接入
+- [ ] Service 实现类 — InspectionService / DeviationService / CapaService 实现类未创建
+- [ ] IQualityAction 实现类 — 未创建
+- [ ] REST 控制器 — 未创建
 
-### 待决策
-1. 检验方案（InspectionPlan）存储为结构化字段还是 JSON？
-2. 质量门禁的判定脚本由谁编写？工艺工程师还是质量工程师？
-3. 偏差处理流程：MES 自动暂停 → QMS 偏差 → CAPA → 通知 MES 恢复？还是人工介入？
-4. SPC 控制限如何设定？固定值还是基于历史数据自动计算？
+### 已决策（design-decisions.md 裁定）
+1. **检验方案存储** → §3.1 结构化字段为主，IExpand 为辅
+2. **SPC 控制限** → §3.2 双模式：固定值（IProcessParameter）+ 自动计算（IoT 历史数据）
+3. **偏差处理流程** → §3.3 MES 自动暂停 + QMS 自动创建 Deviation + **人工判定**（QA 决定处置方式）
+4. **模块定位** → 质量长在工序里，不是贴在产品上
 
 ## AI 协作建议（2026-07-18）
 

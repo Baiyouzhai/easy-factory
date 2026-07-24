@@ -25,7 +25,7 @@ public enum AndonStatus implements ILifecycle.StatusEnum {
     @Override
     public Set<AndonStatus> allowedTransitions() {
         return switch (this) {
-            case OPEN         -> Set.of(ACKNOWLEDGED, CLOSED);
+            case OPEN         -> Set.of(ACKNOWLEDGED, ESCALATED, CLOSED);
             case ACKNOWLEDGED -> Set.of(RESOLVED, ESCALATED);
             case RESOLVED     -> Set.of(CLOSED);
             case ESCALATED    -> Set.of(RESOLVED, CLOSED);

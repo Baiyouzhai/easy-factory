@@ -101,11 +101,25 @@ Andon → QMS:    质量问题 → 创建偏差
 
 ## 遗留问题
 
-### 待决策
-1. 通知渠道：短信/企业微信/钉钉/邮件/声光报警？
-2. 上报规则存储为静态配置还是动态脚本？（类似 Action 脚本化）
-3. Andon 是否需要独立模块，还是作为 MES 的子系统？
-4. 产线物理 Andon 看板（LED屏幕）如何对接？
+### 已决策（design-decisions.md §3.4）
+1. **通知渠道**：先实现企业微信/钉钉 Webhook，预留短信/邮件/声光报警接口
+2. **上报规则**：静态配置（数据库表），不需要脚本化
+3. **模块定位**：独立模块 — Andon 接收多源事件，是跨模块的异常响应中枢
+4. **物理看板**：Phase 5 通过 IoT 模块对接 LED 屏幕
+
+### 当前实现（2026-07-25）
+- [x] `AndonStatus` 状态机（core `batch/`）
+- [x] `AndonEventTypes` 7个事件常量（core `event/types/`）
+- [x] `AndonCall` 完整状态机 + 业务便捷方法
+- [x] `EscalationRule` + `EscalationLevel` 上报规则模型
+- [x] `AndonDashboard` 看板数据值对象
+- [x] `TriggerType` / `AndonSeverity` / `AndonSource` 值枚举
+- [x] `AndonService` 接口（19方法）
+- [x] 55 个单元测试
+- [ ] AndonService 实现类
+- [ ] 通知渠道适配器
+- [ ] REST 控制器
+- [ ] 超时自动上报定时扫描
 
 ## AI 协作建议（2026-07-18）
 
