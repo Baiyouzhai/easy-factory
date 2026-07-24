@@ -536,11 +536,11 @@ com.byz.factory.<module>.<layer>
 |------|------|------|
 | Phase 1 | erp, iot, plm, equip, scm, dms | ✅ 已完成（6/6） |
 | Phase 2 | lims, wms, mps | ✅ 已完成（3/3） |
-| Phase 3 | **mes**, aps | 🔜 待开始（集成枢纽） |
-| Phase 4 | qms, andon, eam | 🔄 进行中（qms ✅, andon ✅, eam ✅） |
-| Phase 5 | bi, web, test | 🔜 待开始 |
+| Phase 3 | mes, aps | ✅ 已完成（2/2） |
+| Phase 4 | qms, andon, eam, bi | ✅ 已完成（4/4） |
+| Phase 5 | web, test, crm | ✅ Phase 5 全部完成（3/3） |
 
-> 当前版本 v0.1.2：core 接口体系完成，Phase 1 + Phase 2 共 9 个模块约定建立完毕，编译测试全通过。
+> 当前版本 v0.2.0：Phase 1-4 共 15 个模块约定建立完毕，编译测试全通过。
 > 详见 [PROJECT_STATUS.md](../../PROJECT_STATUS.md)。
 
 ## 10. 设计边界（不做什么）

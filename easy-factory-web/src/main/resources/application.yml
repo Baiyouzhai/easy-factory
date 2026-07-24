@@ -1,0 +1,56 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: easy-factory-web
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+    default-property-inclusion: non_null
+
+# SpringDoc OpenAPI 配置
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+  group-configs:
+    - group: MES
+      paths-to-match: /api/mes/**
+    - group: QMS
+      paths-to-match: /api/qms/**
+    - group: PLM
+      paths-to-match: /api/plm/**
+    - group: Equip
+      paths-to-match: /api/equip/**
+    - group: LIMS
+      paths-to-match: /api/lims/**
+    - group: IoT
+      paths-to-match: /api/iot/**
+    - group: ERP
+      paths-to-match: /api/erp/**
+    - group: SCM
+      paths-to-match: /api/scm/**
+    - group: DMS
+      paths-to-match: /api/dms/**
+    - group: WMS
+      paths-to-match: /api/wms/**
+    - group: MPS
+      paths-to-match: /api/mps/**
+    - group: APS
+      paths-to-match: /api/aps/**
+    - group: EAM
+      paths-to-match: /api/eam/**
+    - group: Andon
+      paths-to-match: /api/andon/**
+    - group: BI
+      paths-to-match: /api/bi/**
+    - group: CRM
+      paths-to-match: /api/crm/**
+
+# 日志
+logging:
+  level:
+    com.byz.factory: INFO
+    com.byz.factory.web: DEBUG

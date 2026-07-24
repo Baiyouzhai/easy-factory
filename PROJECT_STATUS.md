@@ -12,7 +12,7 @@
 | 接口 | 60+ | process/resource/factory/batch/equip/scm/lims/wms/iot/eam/mps/dms/erp 跨模块契约 |
 | 状态枚举 | 20 | 全部实现 ILifecycle.StatusEnum |
 | 纯值枚举 | 10 | SupplierStatus/MaterialStatus/MaintenanceType 等 |
-| 事件常量类 | 10 | MesEventTypes/EquipEventTypes/PlmEventTypes/LimsEventTypes/MpsEventTypes/DmsEventTypes/IotEventTypes/ApsEventTypes/QmsEventTypes/AndonEventTypes |
+| 事件常量类 | 11 | MesEventTypes/EquipEventTypes/PlmEventTypes/LimsEventTypes/MpsEventTypes/DmsEventTypes/IotEventTypes/ApsEventTypes/QmsEventTypes/AndonEventTypes/CrmEventTypes |
 | 操作分析模型 | 15+ | ProcessRouteMatcher/BottleneckDetector/ProductionLeadTime 等 |
 | 测试 | 600+ | core 182 + 各模块集成测试 |
 | 总计 | 91 | 详见 domain-model.md v5 |
@@ -80,8 +80,9 @@
 | `aps` | 约定已建立 | Schedule + ScheduledTask + ResourceCalendar + RescheduleTrigger + SchedulingRule + ApsEventTypes | ApsService (5方法) |
 | `wms` | 约定已建立 | Storage, Receipt, PickingTask, InventorySnapshot | WmsService (20方法) |
 | `andon` | 约定已建立 | AndonCall(AndonStatus) + EscalationRule + AndonDashboard | AndonService (19方法) |
-| `bi` | 骨架 | KpiSnapshot | DashboardService |
+| `bi` | 约定已建立 | KpiSnapshot + ProductionDashboard + QualityDashboard + OeeDashboard + InventoryDashboard + KpiType + DashboardPeriod | DashboardService (17方法) |
 | `scm` | 约定已建立 | Supplier, PurchaseOrder(PurchaseOrderStatus) | ScmService |
+| `crm` | 约定已建立 | Customer + SalesOrder(SalesOrderStatus) + Complaint(ComplaintStatus) + SalesOrderItem + CrmEventTypes | CrmService (25方法) |
 | `dms` | 约定已建立 | Document + ApprovalWorkflow + ApprovalStep + DmsEventTypes | DmsService (19方法) |
 
 ---
@@ -291,7 +292,9 @@
 | Phase 2 | lims, wms, mps | 3并行 | erp/plm/scm |
 | Phase 3 | **mes**, aps | 串行 | plm+equip+wms+lims |
 | Phase 4 | qms, andon, eam | 2并行 | mes(+iot) |
-| Phase 5 | bi, web, test, crm | 4并行 | 全部 |
+| Phase 5 | bi, web, test | 4并行 | 全部 |
+
+> **Phase 5 测试模块已完成**：42 个跨模块集成测试覆盖全部15个业务模块。
 
 > **mes 是集成枢纽，预计占总工作量 40%+**
 
@@ -1116,16 +1119,278 @@ Andon（安灯系统）是**跨模块异常响应中枢**——接收来自 MES�
 
 ---
 
-## CRM 模块（设计文档，待协同）
+## BI 模块约定（2026-07-25 建立）
 
-| 类型 | 说明 |
+### 设计定位
+
+BI（看板与报表系统）是**协作层只读数据消费模块**——聚合所有业务模块（MES/QMS/Equip/LIMS/WMS/MPS/APS/Andon/EAM）的数据，生成制造运营的可视化看板和 KPI 报表。BI 不产生业务数据，只读取和聚合。通过 SSE（Server-Sent Events）向前端推送实时看板数据（design-decisions.md §4.10）。
+
+### Core 层新增（供跨模块引用）
+
+| 类型 | 文件 | 说明 |
+|------|------|------|
+| 事件常量 | `event/types/BiEventTypes.java` | ⭐ 6 个领域事件常量（2 KPI + 4 看板刷新；与 PlmEventTypes/EquipEventTypes 等同包 `com.byz.factory.event.types`） |
+
+### BI 模型
+
+| 文件 | 继承 | 实现 | 说明 |
+|------|------|------|------|
+| `model/KpiSnapshot.java` | `BaseEntity` | — | KPI 快照实体：10 种标准 KPI + setKpiValue/getKpiValue 动态存取 + markComputed 计算元数据 + isFullyComputed/getComputedKpiCount 查询 |
+| `model/ProductionDashboard.java` | — (record) | — | 生产看板值对象：计划完成率+在制品+当日产出+工单进度明细(WorkOrderProgress 内嵌 record) |
+| `model/QualityDashboard.java` | — (record) | — | 质量看板值对象：一次合格率+偏差统计+CAPA关闭率+最近偏差列表(DeviationSummary 内嵌 record) |
+| `model/OeeDashboard.java` | — (record) | — | OEE 看板值对象：设备OEE明细(EquipmentOee 内嵌 record)+平均A/P/Q/OEE+最佳/最差设备 |
+| `model/InventoryDashboard.java` | — (record) | — | 仓储看板值对象：周转率+呆滞/待检/近效期+库存金额+呆滞明细(SlowMovingItem)+近效期明细(NearExpiryItem) |
+| `model/KpiType.java` | — | — | KPI 类型枚举：10 种(计划完成率/一次合格率/OEE/MTTR/MTBF/批次收率/库存周转率/偏差关闭率/CAPA关闭率/安灯响应时间)，每种含显示名+数据来源+目标值 |
+| `model/DashboardPeriod.java` | — | — | 统计周期枚举：7 种(REALTIME/HOURLY/DAILY/WEEKLY/MONTHLY/QUARTERLY/YEARLY)，每种含刷新间隔(秒) |
+
+### 服务接口
+
+| 文件 | 说明 |
 |------|------|
-| 定位 | 协作层 — 客户主数据 + 销售订单 + 投诉管理 |
-| 模型 | Customer, SalesOrder, Complaint |
-| 事件 | crm.order.confirmed → MPS / crm.complaint.received → QMS |
-| 状态 | 仅设计文档，无代码 |
+| `service/DashboardService.java` | 17 方法：生产看板(getProductionDashboard/getWorkOrderProgressList/getWorkOrderProgress) + 质量看板(getQualityDashboard/getDeviationStats/getRecentDeviations) + OEE看板(getOeeDashboard/getEquipmentOee/getLowOeeEquipments) + 仓储看板(getInventoryDashboard/getSlowMovingItems/getNearExpiryItems) + KPI管理(computeKpi/getKpiSnapshot/getKpiHistory/getLatestKpi) + 批次追溯(getBatchReport) |
+
+### 约定规则
+
+1. **协作层只读消费** — BI 不定义 core 接口供其他模块编译期引用（其他模块不依赖 BI）；BI 通过领域事件订阅各模块数据变更，通过 Service 接口聚合生成看板和 KPI
+2. **模型分层** — 有身份的数据快照（KpiSnapshot）继承 `BaseEntity`；瞬态看板数据用 Java `record` 值对象（不可变、由属性定义相等性）；嵌套明细也用 record（WorkOrderProgress/DeviationSummary/EquipmentOee/SlowMovingItem/NearExpiryItem）
+3. **IExpand 约定** — `bi.kpi.period` / `bi.kpi.factoryCode` / `bi.kpi.computedBy` / `bi.kpi.computedAt` / `bi.kpi.remark` 挂载在 KpiSnapshot 上
+4. **KPI 动态存取** — KpiSnapshot 通过 `setKpiValue(KpiType, BigDecimal)` / `getKpiValue(KpiType)` 实现 10 种标准 KPI 的统一存取，switch 表达式路由到对应字段
+5. **看板刷新频率** — 遵循 design-decisions.md §4.10：操作层（生产/OEE 看板）5s，战术层（质量/仓储看板）30s，战略层（KPI 报表）1h；DashboardPeriod 枚举内置 refreshIntervalSeconds
+6. **领域事件** — 事件常量在 `BiEventTypes` 中统一管理（6 个：2 KPI + 4 看板刷新），遵循 `{module}.{entity}.{past_tense}` 命名约定；**模型层不发布事件**（design-decisions.md §1.1），由 Service 实现类统一负责
+7. **数据来源映射** — 每个 KpiType 枚举值标注 dataSource 字段，明确数据来源模块；BI Service 实现层订阅对应事件增量更新 KPI
+8. **值对象模式** — 所有 Dashboard record 提供 `empty(factoryCode)` 工厂方法返回零值实例；提供语义化查询方法（hasInterruptedOrders/hasOpenDeviations/hasLowOeeEquipment/hasSlowMovingItems 等）
+9. **批次追溯报告** — `getBatchReport(batchNo)` 聚合 MES 工序记录 + LIMS 称量记录 + QMS 检验记录 + 收率计算，为 GMP 合规提供完整的批次追溯数据
+10. **报表引擎** — Phase 5 用 SQL 视图 + JSON API；不引入 Grafana/Superset（design-decisions.md §4.10）
+11. **前端技术栈** — 与 web 模块统一（Vue 3），不独立部署；实时推送用 SSE；移动端出响应式 Web（PWA）
+12. **测试规范** — Given-When-Then + `methodName_condition_expectedResult` + `@DisplayName` 中文描述；81 个测试覆盖：KpiType/DashboardPeriod 枚举（metadata），KpiSnapshot（构造+setKpiValue 全10种+getKpiValue/markComputed/isFullyComputed/getComputedKpiCount+IExpand），ProductionDashboard（构造+empty+hasInterruptedOrders+getCompletionRatio+WorkOrderProgress record），QualityDashboard（构造+empty+hasOpenDeviations+getPassRatio+DeviationSummary record），OeeDashboard（构造+empty+hasLowOeeEquipment+getEquipmentCount+EquipmentOee 趋势值），InventoryDashboard（构造+empty+hasSlowMovingItems+hasNearExpiryItems+getAvailabilityRate+SlowMovingItem/NearExpiryItem record），BiEventTypes（PREFIX+6事件命名+前缀约定+不可实例化），DashboardService（17方法签名），综合场景（生产全流程/KPI累积计算/OEE趋势/偏差趋势/仓储双风险）
+13. **待实现** — DashboardService 实现类、REST 控制器、SSE 推送端点、事件订阅与增量 KPI 更新引擎、SQL 视图定义、Vue 3 前端看板组件、响应式 PWA 移动端
+
+### 跨模块事件契约
+
+> 其他模块通过 `DomainEventPublisher.subscribe(BiEventTypes.XXX, handler)` 订阅。
+
+| 事件 | 订阅方 | 用途 |
+|------|--------|------|
+| `bi.kpi.updated` | **Web** | SSE 推送 KPI 更新到前端 |
+| `bi.kpi.computed` | **Web** | KPI 快照计算完成通知 |
+| `bi.dashboard.production_refreshed` | **Web** | SSE 推送生产看板刷新 |
+| `bi.dashboard.quality_refreshed` | **Web** | SSE 推送质量看板刷新 |
+| `bi.dashboard.oee_refreshed` | **Web** | SSE 推送 OEE 看板刷新 |
+| `bi.dashboard.inventory_refreshed` | **Web** | SSE 推送仓储看板刷新 |
+
+> BI 作为数据消费端，订阅以下模块的领域事件（在 Service 实现层处理）：
+> - **MES** — mes.workorder.created/completed/closed, mes.process.started/completed, mes.action.completed
+> - **QMS** — qms.inspection.completed/passed/failed, qms.deviation.created/resolved, qms.capa.closed, qms.spc.warning
+> - **Equip** — equip.oee.calculated, equip.status.changed
+> - **MPS** — mps.plan.started/completed/closed
+> - **APS** — aps.schedule.created, aps.task.delayed
+> - **Andon** — andon.call.created/resolved/closed
+> - **LIMS** — lims.batch_record.approved, lims.weighing.completed, lims.batch_record.archived
+> - **WMS** — wms.inventory.changed
 
 ---
+
+## Web 模块约定（2026-07-25 建立）
+
+### 设计定位
+
+Web 模块是 **easy-factory 的统一门户**——聚合全部 16 个业务模块（核心 MOM 层 11 + 协作层 5），基于 Spring Boot 3.x 提供统一的 REST API 入口。采用模块化单体架构，后续可按需拆分为微服务。
+
+### Web 模块结构
+
+```
+easy-factory-web/
+├── pom.xml                                  — 依赖全部 16 个业务模块 + SpringDoc
+├── src/main/java/com/byz/factory/
+│   ├── EasyFactoryApplication.java          — @SpringBootApplication 启动类
+│   └── web/
+│       ├── common/
+│       │   ├── Result.java                  — 统一响应体 {code, message, data, timestamp, traceId}
+│       │   ├── PageResult.java              — 分页响应（继承 Result，增加 page/size/total/pages）
+│       │   └── GlobalExceptionHandler.java  — @RestControllerAdvice 全局异常处理
+│       ├── config/
+│       │   └── WebConfig.java               — CORS 全局配置 + 拦截器预留
+│       └── controller/
+│           ├── mes/WorkOrderController.java
+│           ├── qms/InspectionController.java, DeviationController.java, CapaController.java
+│           ├── plm/BlueprintController.java
+│           ├── equip/EquipmentController.java
+│           ├── lims/FormulaController.java, WeighingTaskController.java, BatchRecordController.java
+│           ├── iot/IotController.java
+│           ├── erp/ErpController.java
+│           ├── scm/ScmController.java
+│           ├── dms/DmsController.java
+│           ├── wms/WmsController.java
+│           ├── mps/MpsController.java
+│           ├── aps/ApsController.java
+│           ├── eam/EamController.java
+│           ├── andon/AndonController.java
+│           ├── bi/DashboardController.java
+│           └── crm/CrmController.java
+└── src/main/resources/
+    └── application.yml                       — 服务端口、Jackson、SpringDoc、日志配置
+```
+
+### Controller API 一览
+
+| 模块 | 基础路径 | Controller | 端点数 |
+|------|---------|-----------|--------|
+| MES | `/api/mes/work-orders` | WorkOrderController | 11 |
+| QMS | `/api/qms/inspections` | InspectionController | 12 |
+| QMS | `/api/qms/deviations` | DeviationController | 12 |
+| QMS | `/api/qms/capas` | CapaController | 10 |
+| PLM | `/api/plm/blueprints` | BlueprintController | 21 |
+| Equip | `/api/equip/equipments` | EquipmentController | 20 |
+| LIMS | `/api/lims/formulas` | FormulaController | 10 |
+| LIMS | `/api/lims/weighing-tasks` | WeighingTaskController | 7 |
+| LIMS | `/api/lims/batch-records` | BatchRecordController | 8 |
+| IoT | `/api/iot` | IotController | 13 |
+| ERP | `/api/erp` | ErpController | 16 |
+| SCM | `/api/scm` | ScmController | 14 |
+| DMS | `/api/dms` | DmsController | 19 |
+| WMS | `/api/wms` | WmsController | 16 |
+| MPS | `/api/mps` | MpsController | 14 |
+| APS | `/api/aps` | ApsController | 5 |
+| EAM | `/api/eam` | EamController | 10 |
+| Andon | `/api/andon` | AndonController | 17 |
+| BI | `/api/bi` | DashboardController | 17 |
+| CRM | `/api/crm` | CrmController | 7 |
+| **合计** | | **20 Controller** | **259** |
+
+### 统一响应格式
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": { ... },
+  "timestamp": "2026-07-25T01:00:00Z",
+  "traceId": "a1b2c3d4"
+}
+```
+
+### 约定规则
+
+1. **模块集成方式** — web 模块依赖全部 16 个业务模块；Controller 通过 `@Autowired(required = false)` 注入 Service 接口；当 Service 实现类不存在时 Spring Boot 仍然启动成功（Bean 为 null）
+2. **统一响应包装** — 所有 Controller 方法返回 `Result<T>` 统一封装；成功用 `Result.ok(data)`，失败用 `Result.fail(msg)`；分页查询用 `PageResult<T>`
+3. **异常处理** — `GlobalExceptionHandler` 统一处理 `IllegalArgumentException`(400)、`IllegalStateException`(409)、`Exception`(500)
+4. **CORS** — 开发模式允许所有来源，生产环境需收紧
+5. **API 文档** — SpringDoc OpenAPI 3.0，按模块分 16 个 Group；开发环境 `/swagger-ui.html` 可查看
+6. **RESTful 设计** — 资源用复数名词；生命周期操作用 `PUT /{id}/{action}` 模式（如 `/api/mes/work-orders/WO-001/release`）
+7. **包结构** — Controller 按模块分子包（`controller/mes/`, `controller/qms/`），common 和 config 放 web 层公共组件
+8. **测试规范** — Given-When-Then + `@DisplayName` 中文描述；覆盖 Result/PageResult 工具类构造和工厂方法、所有 Controller 类存在性验证（Class.forName 反射加载）、公共组件加载验证
+9. **待实现** — Service 实现类（Phase 5）、认证授权（JWT + RBAC）、DTO 对象（请求/响应分离）、API 版本管理、前端（Vue 3）、SSE 推送端点
+
+---
+
+## CRM 模块约定（2026-07-25 建立）
+
+### 设计定位
+
+CRM（客户关系管理）是**协作层模块**——管理客户主数据、销售订单和客户投诉。CRM 通过领域事件与 MPS（订单→生产计划）、QMS（投诉→偏差/CAPA）、WMS（订单→发货）对接。
+
+### Core 层新增（供跨模块引用）
+
+| 类型 | 文件 | 说明 |
+|------|------|------|
+| 接口 | `crm/ICustomer.java` | 客户抽象，供 MPS/SCM/QMS 引用 |
+| 接口 | `crm/ISalesOrder.java` | 销售订单抽象（含 ISalesOrderItem 嵌套接口），供 MPS/WMS/BI 引用 |
+| 接口 | `crm/IComplaint.java` | 客户投诉抽象，供 QMS/Andon 引用 |
+| 状态枚举 | `crm/SalesOrderStatus.java` | DRAFT→CONFIRMED→IN_PRODUCTION→SHIPPED→COMPLETED；+CANCELLED；实现 ILifecycle.StatusEnum |
+| 状态枚举 | `crm/ComplaintStatus.java` | OPEN→INVESTIGATING→RESOLVED→CLOSED；+CANCELLED；实现 ILifecycle.StatusEnum |
+| 事件常量 | `event/types/CrmEventTypes.java` | ⭐ 10 个领域事件常量（2 客户 + 5 订单 + 3 投诉；与 EquipEventTypes/PlmEventTypes 等同包 `com.byz.factory.event.types`） |
+
+### CRM 模型
+
+| 文件 | 继承 | 实现 | 说明 |
+|------|------|------|------|
+| `model/Customer.java` | `BaseEntity` | `ICustomer` | 客户实体：行业+区域+GMP审计状态+3 业务便捷方法(passGmpAudit/expireGmpAudit/updateAuditStatus) + IExpand 文档 |
+| `model/SalesOrder.java` | `BaseLifecycleEntity<SalesOrderStatus>` | `ISalesOrder` | 销售订单核心实体：完整状态机 + 5 业务便捷方法(confirm/startProduction/ship/complete/cancel) + 明细管理 + 总金额计算 + 紧急判定 + IExpand 文档 |
+| `model/SalesOrderItem.java` | — | `ISalesOrder.ISalesOrderItem` | 订单明细行：productCode+quantity+unitPrice（参照 PurchaseOrderItem 模式） |
+| `model/Complaint.java` | `BaseLifecycleEntity<ComplaintStatus>` | `IComplaint` | 投诉实体：完整状态机 + 4 业务便捷方法(startInvestigation/resolve/close/cancel) + linkCapa + isQualityRelated + isActive + IExpand 文档 |
+
+### 服务接口
+
+| 文件 | 说明 |
+|------|------|
+| `service/CrmService.java` | 25 方法：客户管理 5(registerCustomer/getCustomer/listCustomers/findCustomersByIndustry/updateAuditStatus) + 订单管理 9(createOrder/getOrder/findOrdersByCustomer/findActiveOrders/confirmOrder/linkToProductionPlan/shipOrder/completeOrder/cancelOrder) + 投诉管理 11(createComplaint/getComplaint/findComplaintsByCustomer/findComplaintsByOrder/findActiveComplaints/findQualityComplaints/startInvestigation/resolveComplaint/closeComplaint/cancelComplaint/linkCapa) |
+
+### 约定规则
+
+1. **协作层模块** — CRM 是协作层模块，客户主数据和订单管理本地存储，但通过领域事件与核心 MOM 层协作
+2. **跨模块接口** — CRM 实体通过 core `crm/` 包中的接口暴露（`ICustomer`、`ISalesOrder`、`IComplaint`）；MPS 通过 ISalesOrder 获取订单需求，QMS 通过 IComplaint 获取投诉信息
+3. **状态机** — `SalesOrderStatus`、`ComplaintStatus` 放 core `crm/` 包中，实现 `ILifecycle.StatusEnum`；SalesOrder/Complaint 继承 `BaseLifecycleEntity<S>` 获得 `transition()` 校验
+4. **模型继承** — 有状态实体（SalesOrder, Complaint）继承 `BaseLifecycleEntity<S>` + 实现 core 接口；无状态记录（Customer）继承 `BaseEntity` + 实现 core 接口
+5. **IExpand 约定** — `crm.customer.*` 挂载在 Customer 上（region/contacts/gmpAuditStatus/gmpAuditDate/onTimeDeliveryRate/qualityComplaintRate）；`crm.order.*` 挂载在 SalesOrder 上（orderNo/customerCode/priority/gxpRequirements/specialInstructions/planNo）；`crm.complaint.*` 挂载在 Complaint 上（complaintNo/customerCode/orderNo/batchNo/type/capaCode/resolvedAt/closedAt）
+6. **业务便捷方法** — Customer: `passGmpAudit(date)` / `expireGmpAudit()` / `updateAuditStatus(status,date)`；SalesOrder: `confirm()` / `startProduction()` / `ship()` / `complete()` / `cancel()` / `addItem()` / `linkToPlan()` / `totalAmount()` / `isRush()`；Complaint: `startInvestigation()` / `resolve(resolution)` / `close()` / `cancel()` / `linkCapa(capaCode)` / `isQualityRelated()` / `isActive()`
+7. **领域事件** — 事件常量在 `CrmEventTypes` 中统一管理（10 个：2 客户 + 5 订单 + 3 投诉），遵循 `{module}.{entity}.{past_tense}` 命名约定；**模型层不发布事件**（design-decisions.md §1.1），由 Service 实现类统一负责
+8. **SalesOrderItem 模式** — 订单明细为独立类实现 `ISalesOrder.ISalesOrderItem`（参照 PurchaseOrderItem 模式），含 productCode/quantity/unitPrice + @Data @NoArgsConstructor @AllArgsConstructor
+9. **订单→MPS 协作** — CRM 确认订单后，MPS 通过订阅 `crm.order.confirmed` 获取订单需求，注册为 `DemandSource(SALES_ORDER)`，纳入生产计划
+10. **投诉→QMS 闭环** — 质量问题投诉（type=QUALITY）创建后，QMS 通过订阅 `crm.complaint.received` 创建偏差 → CAPA 处理 → 投诉通过 `linkCapa()` 关联 CAPA 编码追溯
+11. **GMP 审计管理** — Customer 内建 GMP 审计状态（PASSED/EXPIRED/NEVER），通过 `passGmpAudit()`/`expireGmpAudit()` 操作；审计状态影响是否可接受医药类订单
+12. **测试规范** — Given-When-Then + `methodName_condition_expectedResult` + `@DisplayName` 中文描述；62 个测试覆盖：构造、状态转换（正常+非法+终态+完整生命周期+取消路径）、业务便捷方法、IExpand、枚举定义（SalesOrderStatus/ComplaintStatus 转换规则+CrmEventTypes 10事件命名约定+PREFIX+不可实例化）、CrmService 接口契约（25方法签名）、综合场景（客户订单全流程/质量投诉CAPA闭环/交期延误投诉/订单取消/误投诉撤销）
+13. **待实现** — CrmService 实现类、REST 控制器、企业微信/邮件通知适配器、客户门户（Web端自助查订单进度/提交投诉）
+
+### 跨模块事件契约
+
+> 其他模块通过 `DomainEventPublisher.subscribe(CrmEventTypes.XXX, handler)` 订阅。
+
+| 事件 | 订阅方 | 用途 |
+|------|--------|------|
+| `crm.customer.registered` | **BI** | 客户注册统计 |
+| `crm.customer.audit_updated` | **QMS** | GMP 审计状态变更→供应商审计联动 |
+| `crm.order.created` | **BI** | 订单创建统计 |
+| `crm.order.confirmed` | **MPS, BI** | MPS 注册需求来源→生成生产计划 / BI 订单统计 |
+| `crm.order.shipped` | **WMS, BI** | WMS 成品出库发货 / BI 交付统计 |
+| `crm.order.completed` | **BI, ERP** | BI 交付看板 / ERP 应收账款 |
+| `crm.order.cancelled` | **MPS, BI** | MPS 移除需求来源 / BI 取消统计 |
+| `crm.complaint.received` | **QMS, Andon** | QMS 创建偏差/CAPA / Andon 触发安灯呼叫 |
+| `crm.complaint.resolved` | **QMS** | 同步投诉解决状态，关闭关联偏差 |
+| `crm.complaint.closed` | **BI** | 投诉关闭统计 |
+
+---
+
+---
+
+## Test 模块约定（2026-07-25 建立）
+
+### 设计定位
+
+Test（聚合测试模块）是 **Phase 5 跨模块集成测试中心**——依赖所有15个业务模块，验证跨模块事件契约、多模块协作流程、完整制造场景。Test 不产生业务代码，只消费和执行聚合测试。
+
+### 依赖关系
+
+```
+test ← 所有模块(common, core, mes, qms, plm, equip, lims, erp, iot, eam, mps, aps, wms, andon, bi, scm, dms)
+```
+
+### Test 测试覆盖
+
+| 测试组 | 测试数 | 覆盖内容 |
+|--------|--------|---------|
+| ModuleLoading | 3 | 状态枚举验证 + 值枚举验证 + 15个模块实体构造 |
+| CrossModuleEvents | 5 | 事件常量前缀 + MES/QMS/Andon事件命名 + 事件订阅发布 + 前缀匹配 |
+| MesQmsIntegration | 2 | 工序中断→检验→偏差→CAPA 完整链路 + 让步接收 |
+| MesEquipIntegration | 3 | 设备占用释放 + 故障维修恢复 + OEE 计算 |
+| MesWmsIntegration | 2 | 拣料任务生命周期 + 收货来料检 |
+| WmsScmIntegration | 2 | 采购→收货进度 + 供应商双维度分离 |
+| MesLimsIntegration | 3 | 配方称量验证 + 称量偏差检测 + 批记录生命周期 |
+| AndonMultiSourceIntegration | 3 | 安灯完整生命周期 + 紧急事件 + 上报规则配置 |
+| BiDataConsumption | 4 | KPI 10种动态存取 + 元数据 + 看板 factory 方法 + 刷新间隔 |
+| PlanScheduleExecuteFlow | 3 | MPS→APS→MES 全链路 + 产能检查 + 需求注册 |
+| FullManufacturingScenario | 4 | 阿莫西林端到端 + 操作分析管道 + GMP合规 + 审计追踪 |
+| AdditionalModuleIntegration | 7 | DMS文档 + EAM资产 + IoT设备 + ERP事务 + PLM蓝图 + WMS库存 |
+| **总计** | **42** | **12 个集成测试组** |
+
+### 约定规则
+
+1. **聚合测试中心** — Test 模块依赖所有业务模块，执行跨模块集成测试；不定义 core 接口供其他模块引用
+2. **测试规范** — Given-When-Then + `methodName_condition_expectedResult` + `@DisplayName` 中文描述；每个测试组用 `@Nested` 内嵌类分组
+3. **跨模块事件测试** — 通过 `DomainEventPublisher.subscribe()` 订阅事件 → 调用模型业务方法触发事件 → 验证事件发布正确性
+4. **集成场景优先级** — 优先覆盖核心 MOM 链路（MES+QMS+Equip+WMS+LIMS），其次覆盖协作层（SCM+DMS+BI+Andon），最后覆盖适配层（ERP+IoT+EAM+PLM）
+5. **全流程测试** — 必须包含至少一个完整制造场景（蓝图→计划→排程→工单→称量→检验→批记录→KPI），验证模块间数据流转
+6. **模型构造** — 测试中直接使用业务模型的 public 构造函数创建测试数据，不依赖 Spring 容器
+7. **待实现** — Spring Boot 集成测试、REST API 端到端测试、数据库集成测试、消息队列集成测试
 
 ---
 
@@ -1133,6 +1398,7 @@ Andon（安灯系统）是**跨模块异常响应中枢**——接收来自 MES�
 
 | 日期 | 内容 |
 |------|------|
+| 2026-07-25 | **Test 模块约定建立**：POM 扩展依赖全部15个业务模块 + 42 个跨模块集成测试（12 个测试组覆盖: 模块加载、事件契约、MES+QMS、MES+Equip、MES+WMS、WMS+SCM、MES+LIMS、Andon多源事件、BI数据消费、计划排程执行、阿莫西林端到端、DMS+EAM+IoT+ERP+PLM综合验证）+ 父 POM dependencyManagement 补全所有模块版本 + web 模块编译修复 |
 | 2026-07-19 | **池→线固化裁定**：三层描述体系正式确定；否决能力匹配引擎；core/PLM/Equip/MES/Physical 五会话任务卡列出 |
 | 2026-07-19 | **高层设计**：核心层vs协作层边界 + CRM设计 + 协作协议建立 |
 | 2026-07-19 | **APS 模块约定建立**：1 个 core 新增(ApsEventTypes 5事件) + 5 个模型(Schedule升级+ScheduledTask内嵌类+ResourceCalendar新建+RescheduleTrigger新建+TaskStatus枚举+ResourceType枚举) + SchedulingRule 排程规则引擎(EDD/SPT/CR) + ApsService 接口(5方法) + 63 个测试 |
@@ -1159,3 +1425,6 @@ Andon（安灯系统）是**跨模块异常响应中枢**——接收来自 MES�
 | 2026-07-19 | **Core 设计完善 v5**：删除死代码(script/Action/IProcessRoute/ProcessCompatibilityChecker)；新建 10 个模型(IAuditable/AuditTrail/IElectronicSignature/SignatureMeaning/MachineStatus/UOM/IProcessParameter/IMethod/IEnvironment/IBillOfMaterial)；20 个状态枚举全部实现；23 个跨模块接口全部就位；8 个事件类型常量类完整；DomainEventPublisher 前缀匹配+unsubscribe 已修复；IActionModel.execute() 空指针已保护；Noting→Nothing 全局修正；SourceType 扩展至 18 值；计算器泛型化；formatDuration 公共提取；require() 默认值统一；PROJECT_STATUS.md 更新至 v1.0；domain-model.md 更新至 v5；各模块文档追加 AI 协作建议 |
 | 2026-07-24 | **QMS 模块约定建立**：9 个 core 新增(IInspectionRecord/IDeviation/ICapa + InspectionType/DeviationSeverity/DeviationDisposition/DeviationStatus/CapaStatus + QmsEventTypes 18事件) + 5 个模型(InspectionOrder升级+InspectionPlan新建+InspectionRecord新建+Deviation新建+Capa新建) + 3 个服务接口(InspectionService 3→12方法 + DeviationService 13方法 + CapaService 10方法) + 67 个测试
 | 2026-07-25 | **Andon 模块约定建立**：1 个 core 新增(AndonEventTypes 7事件) + 1 个 core 修改(AndonStatus OPEN→ESCALATED 紧急通道) + 3 个值枚举(TriggerType/AndonSeverity/AndonSource) + 2 个内部枚举(AutoStop/EscalateCondition) + 3 个模型(AndonCall重写+EscalationRule新建+AndonDashboard新建) + AndonService 接口扩展(4→19方法) + 55 个测试
+| 2026-07-25 | **BI 模块约定建立**：1 个 core 新增(BiEventTypes 6事件) + 2 个枚举(KpiType 10种标准KPI + DashboardPeriod 7种周期) + 5 个模型(KpiSnapshot重写继承BaseEntity + ProductionDashboard/QualityDashboard/OeeDashboard/InventoryDashboard 4个record值对象) + DashboardService 接口扩展(4→17方法) + 81 个测试
+| 2026-07-25 | **CRM 模块约定建立**：6 个 core 新增(ICustomer/ISalesOrder/IComplaint/SalesOrderStatus/ComplaintStatus + CrmEventTypes 10事件) + 4 个模型(Customer重写+SalesOrder重写+SalesOrderItem新建+Complaint新建) + CrmService 接口扩展(3→25方法) + 62 个测试 + web CrmController 更新(BigDecimal参数) + overview.md Phase 5 状态更新 |
+| 2026-07-25 | **Web 模块约定建立**：Spring Boot 3.x 启动类 + 2 个公共组件(Result/PageResult) + 全局异常处理器 + CORS 配置 + 20 个 Controller(覆盖全部 16 个业务模块) + 259 个 REST 端点 + application.yml(SpringDoc 16 Group) + 37 个测试

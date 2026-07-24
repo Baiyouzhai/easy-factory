@@ -12,14 +12,14 @@
     <packaging>jar</packaging>
 
     <name>easy-factory-test</name>
-    <url>http://maven.apache.org</url>
+    <description>easy-factory 聚合测试模块 — 跨模块集成场景测试</description>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
     <dependencies>
-        <!-- 聚合所有模块的测试 -->
+        <!-- ===== 核心层 ===== -->
         <dependency>
             <groupId>com.byz.factory</groupId>
             <artifactId>easy-factory-common</artifactId>
@@ -29,7 +29,71 @@
             <artifactId>easy-factory-core</artifactId>
         </dependency>
 
-        <!-- Spring Boot Test -->
+        <!-- ===== 核心 MOM 层 ===== -->
+        <dependency>
+            <groupId>com.byz.factory</groupId>
+            <artifactId>easy-factory-mes</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.byz.factory</groupId>
+            <artifactId>easy-factory-qms</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.byz.factory</groupId>
+            <artifactId>easy-factory-plm</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.byz.factory</groupId>
+            <artifactId>easy-factory-equip</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.byz.factory</groupId>
+            <artifactId>easy-factory-lims</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.byz.factory</groupId>
+            <artifactId>easy-factory-iot</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.byz.factory</groupId>
+            <artifactId>easy-factory-eam</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.byz.factory</groupId>
+            <artifactId>easy-factory-wms</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.byz.factory</groupId>
+            <artifactId>easy-factory-mps</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.byz.factory</groupId>
+            <artifactId>easy-factory-aps</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.byz.factory</groupId>
+            <artifactId>easy-factory-andon</artifactId>
+        </dependency>
+
+        <!-- ===== 协作层 ===== -->
+        <dependency>
+            <groupId>com.byz.factory</groupId>
+            <artifactId>easy-factory-erp</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.byz.factory</groupId>
+            <artifactId>easy-factory-scm</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.byz.factory</groupId>
+            <artifactId>easy-factory-dms</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.byz.factory</groupId>
+            <artifactId>easy-factory-bi</artifactId>
+        </dependency>
+
+        <!-- ===== Spring Boot Test ===== -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>

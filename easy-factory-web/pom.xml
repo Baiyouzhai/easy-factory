@@ -12,10 +12,11 @@
     <packaging>jar</packaging>
 
     <name>easy-factory-web</name>
-    <url>http://maven.apache.org</url>
+    <description>easy-factory Web 门户 — 聚合所有业务模块，提供统一 REST API 入口</description>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <springdoc.version>2.6.0</springdoc.version>
     </properties>
 
     <dependencies>
@@ -25,7 +26,14 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
-        <!-- 内部模块 -->
+        <!-- SpringDoc OpenAPI -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>${springdoc.version}</version>
+        </dependency>
+
+        <!-- 内部模块 — 核心层 -->
         <dependency>
             <groupId>com.byz.factory</groupId>
             <artifactId>easy-factory-common</artifactId>
@@ -35,15 +43,91 @@
             <artifactId>easy-factory-core</artifactId>
         </dependency>
 
+        <!-- 内部模块 — 核心 MOM 层 -->
+        <dependency>
+            <groupId>com.byz.factory</groupId>
+            <artifactId>easy-factory-mes</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.byz.factory</groupId>
+            <artifactId>easy-factory-qms</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.byz.factory</groupId>
+            <artifactId>easy-factory-plm</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.byz.factory</groupId>
+            <artifactId>easy-factory-equip</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.byz.factory</groupId>
+            <artifactId>easy-factory-lims</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.byz.factory</groupId>
+            <artifactId>easy-factory-iot</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.byz.factory</groupId>
+            <artifactId>easy-factory-eam</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.byz.factory</groupId>
+            <artifactId>easy-factory-wms</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.byz.factory</groupId>
+            <artifactId>easy-factory-mps</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.byz.factory</groupId>
+            <artifactId>easy-factory-aps</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.byz.factory</groupId>
+            <artifactId>easy-factory-andon</artifactId>
+        </dependency>
+
+        <!-- 内部模块 — 协作层 -->
+        <dependency>
+            <groupId>com.byz.factory</groupId>
+            <artifactId>easy-factory-erp</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.byz.factory</groupId>
+            <artifactId>easy-factory-scm</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.byz.factory</groupId>
+            <artifactId>easy-factory-crm</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.byz.factory</groupId>
+            <artifactId>easy-factory-dms</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.byz.factory</groupId>
+            <artifactId>easy-factory-bi</artifactId>
+        </dependency>
+
+        <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <scope>provided</scope>
         </dependency>
 
+        <!-- Test -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 

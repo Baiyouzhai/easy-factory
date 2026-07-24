@@ -128,10 +128,34 @@ web 模块 POM 中可选引入各模块依赖，未引入的模块其 Controller
 
 | 模块 | 基础路径 | 主要资源 |
 |------|---------|---------|
-| MES | `/api/mes/` | work-orders, processes, actions |
-| QMS | `/api/qms/` | inspection-plans, inspection-records, deviations, capas |
-| PLM | `/api/plm/` | blueprints, process-templates, parameters, bom |
-| Equip | `/api/equip/` | equipments, recipes, parameters, oee |
-| LIMS | `/api/lims/` | formulas, weighing-tasks, batch-records |
-| IoT | `/api/iot/` | devices, commands, alarms |
-| ERP | `/api/erp/` | materials, inventory, transactions |
+| MES | `/api/mes/work-orders` | work-orders, processes, actions |
+| QMS | `/api/qms/inspections` `/api/qms/deviations` `/api/qms/capas` | inspection-plans, inspection-records, deviations, capas |
+| PLM | `/api/plm/blueprints` | blueprints, process-templates, parameters, bom, change-requests |
+| Equip | `/api/equip/equipments` | equipments, recipes, parameters, oee |
+| LIMS | `/api/lims/formulas` `/api/lims/weighing-tasks` `/api/lims/batch-records` | formulas, weighing-tasks, batch-records |
+| IoT | `/api/iot` | devices, commands, alarms |
+| ERP | `/api/erp` | materials, inventory, transactions |
+| SCM | `/api/scm` | suppliers, purchase-orders |
+| DMS | `/api/dms` | documents, approval-workflows, audit-trails |
+| WMS | `/api/wms` | receipts, picking-tasks, inventory |
+| MPS | `/api/mps` | plans, demands, capacity-check |
+| APS | `/api/aps` | schedules |
+| EAM | `/api/eam` | assets, maintenance-orders, calibrations |
+| Andon | `/api/andon` | calls, escalation-rules, dashboard |
+| BI | `/api/bi` | dashboards (production/quality/oee/inventory), kpi, batch-report |
+| CRM | `/api/crm` | customers, orders, complaints |
+
+## 当前实现（2026-07-25）
+
+- [x] Spring Boot 3.x 启动类 `EasyFactoryApplication`
+- [x] 统一响应体 `Result<T>` + 分页 `PageResult<T>`
+- [x] 全局异常处理 `GlobalExceptionHandler`
+- [x] CORS 全局配置 `WebConfig`
+- [x] 20 个 REST Controller，覆盖全部 16 个业务模块（259 个端点）
+- [x] SpringDoc OpenAPI 3.0（按模块 16 个 Group）
+- [x] application.yml 配置
+- [x] 37 个单元测试
+- [ ] Service 实现类（Phase 5）
+- [ ] 认证授权 JWT + RBAC
+- [ ] DTO 对象（请求/响应分离）
+- [ ] 前端 Vue 3
