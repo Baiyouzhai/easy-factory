@@ -184,18 +184,22 @@ QMS ← LIMS:  实验室检测结果
 
 ## 遗留问题
 
-### 当前实现（2026-07-24 更新）
-- [x] `InspectionOrder` — 完整状态机 + 业务便捷方法 + 领域事件发布（升级）
-- [x] `InspectionService` — 接口扩展至 12 方法（方案管理 + 检验指令 + 判定逻辑）
-- [x] `InspectionPlan` — 检验方案实体，InspectionItem 内部类（新建）
-- [x] `InspectionRecord` — 检验记录实体，自动判定逻辑（新建）
-- [x] `Deviation` — 偏差实体，完整状态机 + 8 业务便捷方法 + requiresCapa()（新建）
-- [x] `Capa` — CAPA 实体，完整状态机 + 5 业务便捷方法 + isOverdue()（新建）
-- [x] `DeviationService` / `CapaService` — 服务接口已定义（新建）
+### 当前实现（2026-07-25 更新）
+- [x] `InspectionOrder` — 完整状态机 + 业务便捷方法 + JPA 持久化注解（升级）
+- [x] `InspectionService` — 接口扩展至 12 方法 + ServiceImpl 实现（构造器注入 + @Transactional）
+- [x] `InspectionPlan` — 检验方案实体 + InspectionItem @Embeddable 内部类 + JPA 注解（新建）
+- [x] `InspectionRecord` — 检验记录实体 + 自动判定逻辑 + JPA 注解（新建）
+- [x] `Deviation` — 偏差实体 + 完整状态机 + 8 业务便捷方法 + requiresCapa() + JPA 注解（新建）
+- [x] `Capa` — CAPA 实体 + 完整状态机 + 5 业务便捷方法 + isOverdue() + JPA 注解（新建）
+- [x] `DeviationService` / `CapaService` — 服务接口 + ServiceImpl 实现（新建）
+- [x] `QualityAction` — IQualityAction 桥接实现 + 4 工厂方法(ipqc/gate/fqc/iqc)（新建）
 - [x] Core 层接口/枚举 — IInspectionRecord / IDeviation / ICapa / InspectionType / DeviationSeverity / DeviationDisposition / DeviationStatus / CapaStatus / QmsEventTypes（新建）
+- [x] Repository 层 — InspectionOrderRepository / InspectionPlanRepository / DeviationRepository / CapaRepository（新建）
+- [x] DDL — V1.10__qms.sql（6 张表，PostgreSQL 16）（新建）
+- [x] 集成测试 — 13 个 Spring Boot DataJpaTest + H2 内存数据库（新建）
+- [x] 单元测试 — 76 个（从 67 增至 76，新增 QualityAction 9 测试）
 - [ ] SPC 实时计算引擎 — 示例脚本存在但未接入
-- [ ] Service 实现类 — InspectionService / DeviationService / CapaService 实现类未创建
-- [ ] IQualityAction 实现类 — 未创建
+- [ ] IQualityAction.executeQuality() 与 MES 工序引擎集成 — 基础桥接已实现，运行时逻辑待联调
 - [ ] REST 控制器 — 未创建
 
 ### 已决策（design-decisions.md 裁定）

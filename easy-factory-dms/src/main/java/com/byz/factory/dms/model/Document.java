@@ -9,8 +9,14 @@ import com.byz.factory.event.types.DmsEventTypes;
 import com.byz.factory.shared.BaseLifecycleEntity;
 import com.byz.factory.shared.IVersionStrategy;
 import com.byz.factory.shared.IncrementalVersionStrategy;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Table;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.util.Map;
@@ -19,10 +25,9 @@ import java.util.Map;
  * 文档 — DMS 核心实体，GMP 受控文档的完整生命周期管理。
  * <p>
  * 继承 BaseLifecycleEntity 获得状态机（DRAFT→UNDER_REVIEW→APPROVED/REJECTED→EFFECTIVE→OBSOLETED），
- * 实现 IDocument 供 LIMS/QMS/PLM/EAM 等下游模块编译期引用。
+ * 实现 IDocument 供模块内部解耦。
  * <p>
- * 状态变更时自动通过 {@link DomainEventPublisher} 发布领域事件，
- * 通知 LIMS/QMS/PLM/EAM 等订阅模块。
+ * 状态变更时自动通过 {@link DomainEventPublisher} 发布领域事件。
  *
  * <h3>IExpand 约定</h3>
  * <pre>
@@ -39,41 +44,56 @@ import java.util.Map;
  *
  * @author 苏政
  */
+@Entity
+@Table(name = "dms_document")
 @Data
 @EqualsAndHashCode(callSuper = true)
+@NoArgsConstructor
 public class Document extends BaseLifecycleEntity<DocumentStatus> implements IDocument {
 
     /** 文档编号（业务标识） */
+    @Column(name = "document_code", length = 100, nullable = false, unique = true)
     private String documentCode;
 
     /** 文档标题 */
+    @Column(nullable = false, length = 500)
     private String title;
 
     /** 文档类别 */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
     private DocumentCategory category;
 
     /** 版本号（整数递增：1 → 2 → 3 …） */
+    @Column(length = 20, nullable = false)
     private String version;
 
     /** 作者 */
+    @Column(length = 100)
     private String author;
 
     /** 审批人 */
+    @Column(name = "approved_by", length = 100)
     private String approvedBy;
 
     /** 生效日期 */
+    @Column(name = "effective_date")
     private LocalDate effectiveDate;
 
     /** 复审周期（月） */
+    @Column(name = "review_cycle_months")
     private int reviewCycleMonths;
 
     /** 下次复审日期 */
+    @Column(name = "next_review_date")
     private LocalDate nextReviewDate;
 
     /** 文档内容/摘要 */
+    @Column(columnDefinition = "text")
     private String content;
 
     /** 版本递增策略（DMS 默认使用简单整数递增） */
+    @jakarta.persistence.Transient
     private IVersionStrategy versionStrategy;
 
     /**
@@ -105,8 +125,6 @@ public class Document extends BaseLifecycleEntity<DocumentStatus> implements IDo
 
     /**
      * 基于当前文档创建新版本草稿。
-     * <p>
-     * 当前文档作废后，通过此方法创建新版本文档（保留原始文档编号，从 DRAFT 重新开始）。
      *
      * @param newVersion 新版本号
      * @return 新版本草稿
@@ -118,16 +136,13 @@ public class Document extends BaseLifecycleEntity<DocumentStatus> implements IDo
         next.setContent(this.content);
         next.setReviewCycleMonths(this.reviewCycleMonths);
         next.setVersionStrategy(this.versionStrategy);
-        // 在扩展属性中记录来源
         next.setExpandProperty("dms.previousVersion", this.version);
         return next;
     }
 
     // ==================== 业务便捷方法（含事件发布） ====================
 
-    /**
-     * 提交审批（DRAFT → UNDER_REVIEW）。
-     */
+    /** 提交审批（DRAFT → UNDER_REVIEW） */
     public void submitForReview() {
         transition(DocumentStatus.UNDER_REVIEW);
         markUpdated();
@@ -137,11 +152,7 @@ public class Document extends BaseLifecycleEntity<DocumentStatus> implements IDo
                 "version", version));
     }
 
-    /**
-     * 批准文档（UNDER_REVIEW → APPROVED）。
-     *
-     * @param approvedBy 审批人
-     */
+    /** 批准文档（UNDER_REVIEW → APPROVED） */
     public void approve(String approvedBy) {
         this.approvedBy = approvedBy;
         transition(DocumentStatus.APPROVED);
@@ -152,11 +163,7 @@ public class Document extends BaseLifecycleEntity<DocumentStatus> implements IDo
                 "approvedBy", approvedBy));
     }
 
-    /**
-     * 驳回评审（UNDER_REVIEW → REJECTED）。
-     *
-     * @param reason 驳回原因
-     */
+    /** 驳回评审（UNDER_REVIEW → REJECTED） */
     public void reject(String reason) {
         transition(DocumentStatus.REJECTED);
         markUpdated();
@@ -167,21 +174,13 @@ public class Document extends BaseLifecycleEntity<DocumentStatus> implements IDo
                 "reason", reason));
     }
 
-    /**
-     * 重新提交（REJECTED → DRAFT，供修改后再次提审）。
-     */
+    /** 重新提交（REJECTED → DRAFT） */
     public void resubmit() {
         transition(DocumentStatus.DRAFT);
         markUpdated();
     }
 
-    /**
-     * 文档生效（APPROVED → EFFECTIVE）。
-     * <p>
-     * 设置生效日期并自动计算下次复审日期。
-     *
-     * @param effectiveDate 生效日期
-     */
+    /** 文档生效（APPROVED → EFFECTIVE） */
     public void makeEffective(LocalDate effectiveDate) {
         this.effectiveDate = effectiveDate;
         if (reviewCycleMonths > 0) {
@@ -196,11 +195,7 @@ public class Document extends BaseLifecycleEntity<DocumentStatus> implements IDo
                 "nextReviewDate", nextReviewDate != null ? nextReviewDate.toString() : "N/A"));
     }
 
-    /**
-     * 作废文档（任意非终态 → OBSOLETED）。
-     *
-     * @param reason 作废原因
-     */
+    /** 作废文档（任意非终态 → OBSOLETED） */
     public void obsolete(String reason) {
         transition(DocumentStatus.OBSOLETE);
         markUpdated();
@@ -211,14 +206,7 @@ public class Document extends BaseLifecycleEntity<DocumentStatus> implements IDo
                 "reason", reason));
     }
 
-    /**
-     * 升级版本——当前文档作废并创建新版本。
-     * <p>
-     * 适用场景：文档需要内容修订时，先作废旧版本再生成新版本草稿。
-     *
-     * @param reason 作废原因
-     * @return 新版本草稿
-     */
+    /** 升级版本——当前文档作废并创建新版本 */
     public Document supersede(String reason) {
         obsolete(reason);
         String newVersion = bumpVersion();
@@ -233,16 +221,12 @@ public class Document extends BaseLifecycleEntity<DocumentStatus> implements IDo
 
     // ==================== 查询方法 ====================
 
-    /**
-     * 判断文档是否已过期（超过复审日期）。
-     */
+    /** 判断文档是否已过期（超过复审日期） */
     public boolean isExpired() {
         return nextReviewDate != null && LocalDate.now().isAfter(nextReviewDate);
     }
 
-    /**
-     * 判断文档是否处于可编辑状态。
-     */
+    /** 判断文档是否处于可编辑状态 */
     public boolean isEditable() {
         DocumentStatus s = getStatus();
         return s == DocumentStatus.DRAFT || s == DocumentStatus.REJECTED;

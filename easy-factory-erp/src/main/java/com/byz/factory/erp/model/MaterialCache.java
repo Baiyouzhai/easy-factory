@@ -5,14 +5,16 @@ import com.byz.factory.resource.ResourceItem;
 import com.byz.factory.shared.BaseEntity;
 import com.byz.factory.shared.Dict;
 import com.byz.factory.shared.UOM;
+import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 
 /**
- * ERP 物料主数据本地缓存 — 继承 BaseEntity 获得 code/name/audit。
+ * ERP 物料主数据本地缓存 — 继承 BaseEntity 获得 id/code/name/createdAt/updatedAt。
  * <p>
  * 将 ERP 系统的物料主数据缓存到本地，其他模块通过 {@link #toResourceItem()}
  * 获取 core 统一资源模型，无需直接依赖 ERP 物料结构。
@@ -29,17 +31,36 @@ import java.time.Instant;
  *
  * @author 苏政
  */
+@Entity
+@Table(name = "erp_material_cache")
 @Data
+@NoArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 public class MaterialCache extends BaseEntity {
 
+    @Column(length = 500)
     private String description;
+
+    @Column(length = 20)
     private String unit;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "material_type", length = 10, nullable = false)
     private ErpMaterialType materialType;
+
+    @Column(name = "batch_managed", nullable = false)
     private boolean batchManaged;
+
+    @Column(name = "shelf_life_days", nullable = false)
     private int shelfLifeDays;
+
+    @Column(name = "ghs_class", length = 50)
     private String ghsClass;
+
+    @Column(name = "last_sync_time")
     private Instant lastSyncTime;
+
+    @Column(name = "source_system", length = 50)
     private String sourceSystem;
 
     /**
@@ -58,16 +79,6 @@ public class MaterialCache extends BaseEntity {
 
     /**
      * 将 ERP 物料缓存映射为 core 统一资源模型 {@link IResourceItem}。
-     * <p>
-     * 映射规则：
-     * <ul>
-     *   <li>code → ResourceItem.name（物料编码，用于工序投料匹配）</li>
-     *   <li>group → SourceGroup.Material（物料分组）</li>
-     *   <li>type → 根据 ErpMaterialType 映射 SourceType</li>
-     *   <li>number → 1（占位数量，实际使用时由调用方指定）</li>
-     * </ul>
-     * ERP 特有字段（batchManaged、shelfLife、ghsClass 等）保留在 MaterialCache 本身上，
-     * 调用方如需 ERP 特有属性，通过 MaterialCache 直接读取。
      *
      * @return core 资源项（可用于工序投料、BOM 引用等）
      */
@@ -80,9 +91,7 @@ public class MaterialCache extends BaseEntity {
         return item;
     }
 
-    /**
-     * ERP 物料类型 → core 资源类型映射。
-     */
+    /** ERP 物料类型 → core 资源类型映射。 */
     private Dict.SourceType mapSourceType() {
         if (materialType == null) return Dict.SourceType.Other;
         return switch (materialType) {
@@ -94,8 +103,6 @@ public class MaterialCache extends BaseEntity {
 
     /**
      * 尝试将 ERP 单位编码映射为 core {@link UOM} 枚举。
-     * <p>
-     * 当前为简单映射，实际对接 ERP 时需扩展完整的单位映射表。
      *
      * @return 对应的 UOM，未匹配时返回 NONE
      */

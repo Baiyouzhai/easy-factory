@@ -1,10 +1,12 @@
 package com.byz.factory.wms.model;
 
+import com.byz.factory.shared.BaseEntity;
 import com.byz.factory.wms.IInventorySnapshot;
 import com.byz.factory.wms.MaterialStatus;
-import com.byz.factory.shared.BaseEntity;
+import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -38,29 +40,39 @@ import java.time.Instant;
  *
  * @author 苏政
  */
+@Entity
+@Table(name = "wms_inventory_snapshot")
 @Data
 @EqualsAndHashCode(callSuper = true)
+@NoArgsConstructor
 public class InventorySnapshot extends BaseEntity implements IInventorySnapshot {
 
     /** 物料编码 */
+    @Column(nullable = false, length = 100)
     private String materialCode;
 
     /** 批次号 */
+    @Column(nullable = false, length = 100)
     private String batchNo;
 
     /** 库位编码 */
+    @Column(nullable = false, length = 100)
     private String locationCode;
 
     /** 在手库存 */
+    @Column(precision = 20, scale = 4)
     private BigDecimal onHandQty;
 
     /** 已分配（被工单预留） */
+    @Column(precision = 20, scale = 4)
     private BigDecimal allocatedQty;
 
     /** 待检库存 */
+    @Column(precision = 20, scale = 4)
     private BigDecimal quarantineQty;
 
     /** 不合格库存 */
+    @Column(precision = 20, scale = 4)
     private BigDecimal rejectedQty;
 
     /** 有效期至 */
@@ -70,6 +82,8 @@ public class InventorySnapshot extends BaseEntity implements IInventorySnapshot 
     private Instant lastCounted;
 
     /** 物料质量状态 */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
     private MaterialStatus status;
 
     /**
@@ -93,6 +107,7 @@ public class InventorySnapshot extends BaseEntity implements IInventorySnapshot 
     // ==================== IInventorySnapshot 实现 ====================
 
     @Override
+    @Transient
     public BigDecimal getAvailableQty() {
         if (onHandQty == null || allocatedQty == null) {
             return BigDecimal.ZERO;

@@ -1,11 +1,13 @@
 package com.byz.factory.wms.model;
 
+import com.byz.factory.shared.BaseLifecycleEntity;
 import com.byz.factory.wms.IPickingTask;
 import com.byz.factory.wms.PickingTaskStatus;
 import com.byz.factory.wms.PickingType;
-import com.byz.factory.shared.BaseLifecycleEntity;
+import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -34,23 +36,33 @@ import java.util.List;
  *
  * @author 苏政
  */
+@Entity
+@Table(name = "wms_picking_task")
 @Data
 @EqualsAndHashCode(callSuper = true)
+@NoArgsConstructor
 public class PickingTask extends BaseLifecycleEntity<PickingTaskStatus> implements IPickingTask {
 
     /** 关联工单号（MES） */
+    @Column(nullable = false, length = 100)
     private String workOrderNo;
 
     /** 关联批号 */
+    @Column(length = 100)
     private String batchNo;
 
     /** 拣料类型 */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
     private PickingType pickingType;
 
     /** 拣料明细 */
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "task_id")
     private List<PickingTaskItem> items;
 
     /** 拣料人 */
+    @Column(length = 100)
     private String pickedBy;
 
     /** 送达时间（线边仓） */
@@ -138,16 +150,30 @@ public class PickingTask extends BaseLifecycleEntity<PickingTaskStatus> implemen
     /**
      * 拣料明细 — 实现 IPickingTask.IPickingTaskItem 供跨模块引用。
      */
+    @Entity
+    @Table(name = "wms_picking_task_item")
     @Data
+    @NoArgsConstructor
     public static class PickingTaskItem implements IPickingTask.IPickingTaskItem {
 
-        private String materialCode;
-        private BigDecimal requiredQty;
-        private BigDecimal pickedQty;
-        private String batchNo;
-        private String locationCode;
+        @Id
+        @GeneratedValue(strategy = GenerationType.IDENTITY)
+        private Long id;
 
-        public PickingTaskItem() {}
+        @Column(nullable = false, length = 100)
+        private String materialCode;
+
+        @Column(precision = 20, scale = 4)
+        private BigDecimal requiredQty;
+
+        @Column(precision = 20, scale = 4)
+        private BigDecimal pickedQty;
+
+        @Column(length = 100)
+        private String batchNo;
+
+        @Column(length = 100)
+        private String locationCode;
 
         public PickingTaskItem(String materialCode, BigDecimal requiredQty, BigDecimal pickedQty,
                                String batchNo, String locationCode) {

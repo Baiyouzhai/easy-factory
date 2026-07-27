@@ -2,69 +2,50 @@ package com.byz.factory.qms.model;
 
 import com.byz.factory.batch.InspectionType;
 import com.byz.factory.shared.BaseEntity;
+import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * 检验方案 — 定义对特定产品/工序的检验项目、规格限和抽样方案。
- * <p>
- * 继承 BaseEntity（无状态机）。检验方案是参考文档，非生命周期驱动的实体。
- * 结构化字段为主（检验项目/方法/规格限），非标字段通过 IExpand 扩展。
- *
- * <h3>IExpand 约定</h3>
- * <pre>
- *   qms.plan.productCode      — 适用产品编码
- *   qms.plan.processCode      — 适用工序编码
- *   qms.plan.aql              — 允收质量水平
- *   qms.plan.sampleSize       — 抽样数
- *   qms.plan.standard         — 检验标准（如 GB/T 2828.1）
- *   qms.plan.version          — 版本号
- *   qms.plan.approvedBy       — 批准人
- * </pre>
- *
- * @author 苏政
- */
 @Data
 @EqualsAndHashCode(callSuper = true)
+@Entity
+@Table(name = "qms_inspection_plan")
 public class InspectionPlan extends BaseEntity {
 
-    /** 适用产品编码 */
+    @Column(name = "product_code", nullable = false, length = 100)
     private String productCode;
 
-    /** 适用工序编码 */
+    @Column(name = "process_code", length = 100)
     private String processCode;
 
-    /** 检验类型 */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "inspection_type", length = 10)
     private InspectionType inspectionType;
 
-    /** AQL 允收质量水平 */
+    @Column
     private double aql;
 
-    /** 抽样数 */
+    @Column(name = "sample_size")
     private int sampleSize;
 
-    /** 检验标准（如 GB/T 2828.1） */
+    @Column(length = 100)
     private String standard;
 
-    /** 版本号 */
+    @Column(nullable = false, length = 20)
     private String version;
 
-    /** 批准人 */
+    @Column(name = "approved_by", length = 100)
     private String approvedBy;
 
-    /** 检验项目列表 */
+    @Transient
     private List<InspectionItem> items;
 
-    /**
-     * @param code         方案编码
-     * @param name         方案名称
-     * @param productCode  适用产品编码
-     * @param processCode  适用工序编码
-     * @param inspectionType 检验类型
-     */
+    public InspectionPlan() {}
+
     public InspectionPlan(String code, String name, String productCode,
                           String processCode, InspectionType inspectionType) {
         super(code, name);
@@ -75,99 +56,47 @@ public class InspectionPlan extends BaseEntity {
         this.version = "1.0";
     }
 
-    // ==================== 业务方法 ====================
-
-    /**
-     * 添加检验项目。
-     *
-     * @param item 检验项目
-     */
     public void addItem(InspectionItem item) {
-        if (this.items == null) {
-            this.items = new ArrayList<>();
-        }
+        if (this.items == null) this.items = new ArrayList<>();
         this.items.add(item);
         markUpdated();
     }
 
-    /**
-     * 更新版本号。
-     *
-     * @param newVersion 新版本号
-     */
-    public void updateVersion(String newVersion) {
-        this.version = newVersion;
-        markUpdated();
-    }
+    public void updateVersion(String newVersion) { this.version = newVersion; markUpdated(); }
 
-    /**
-     * 批准检验方案。
-     *
-     * @param approvedBy 批准人
-     */
-    public void approve(String approvedBy) {
-        this.approvedBy = approvedBy;
-        markUpdated();
-    }
+    public void approve(String approvedBy) { this.approvedBy = approvedBy; markUpdated(); }
 
-    /**
-     * 获取检验项目总数。
-     */
-    public int getItemCount() {
-        return items != null ? items.size() : 0;
-    }
+    public int getItemCount() { return items != null ? items.size() : 0; }
 
-    // ==================== 内部类 ====================
-
-    /**
-     * 检验项目 — 检验方案中的单条检验规格定义。
-     * <p>
-     * 定义检验项目、规格限、检验方法和抽样方案。
-     */
     @Data
+    @Embeddable
     public static class InspectionItem {
-
-        /** 项目编码 */
+        @Column(name = "item_code", nullable = false, length = 100)
         private String itemCode;
-
-        /** 项目名称（如: 粘度、pH值、外观、含量） */
+        @Column(name = "item_name", nullable = false, length = 255)
         private String itemName;
-
-        /** 规格类型（计量/计数） */
+        @Column(name = "spec_type", length = 20)
         private String specType;
-
-        /** 规格上限 */
-        private java.math.BigDecimal usl;
-
-        /** 规格下限 */
-        private java.math.BigDecimal lsl;
-
-        /** 目标值 */
-        private java.math.BigDecimal target;
-
-        /** 单位 */
+        @Column(precision = 20, scale = 6)
+        private BigDecimal usl;
+        @Column(precision = 20, scale = 6)
+        private BigDecimal lsl;
+        @Column(precision = 20, scale = 6)
+        private BigDecimal target;
+        @Column(length = 20)
         private String unit;
-
-        /** 检验方法 */
+        @Column(length = 255)
         private String method;
-
-        /** 抽样方案 */
+        @Column(length = 255)
         private String sampling;
-
-        /** 序号 */
+        @Column(name = "sort_order")
         private int order;
-
-        /** 是否关键质量属性(CQA) */
+        @Column
         private boolean critical;
 
         public InspectionItem() {}
-
         public InspectionItem(String itemCode, String itemName, String specType) {
-            this.itemCode = itemCode;
-            this.itemName = itemName;
-            this.specType = specType;
+            this.itemCode = itemCode; this.itemName = itemName; this.specType = specType;
         }
-
     }
-
 }

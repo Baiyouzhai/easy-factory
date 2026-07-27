@@ -1,6 +1,6 @@
 package com.byz.factory.lims;
 
-import com.byz.factory.batch.*;
+import com.byz.factory.lims.*;
 import com.byz.factory.event.DomainEventPublisher;
 import com.byz.factory.event.IDomainEvent;
 import com.byz.factory.event.types.LimsEventTypes;

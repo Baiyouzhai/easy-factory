@@ -1,6 +1,7 @@
 package com.byz.factory.bi.model;
 
 import com.byz.factory.shared.BaseEntity;
+import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -39,59 +40,82 @@ import java.util.Map;
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
+@Entity
+@Table(name = "kpi_snapshot")
 public class KpiSnapshot extends BaseEntity {
 
     /** 统计周期（如 "2026-07", "2026-Q3", "2026"） */
+    @Column(nullable = false, length = 20)
     private String period;
 
     /** 工厂编码 */
+    @Column(name = "factory_code", nullable = false, length = 100)
     private String factoryCode;
 
     /** 计划完成率（%） */
+    @Column(name = "plan_completion_rate", precision = 10, scale = 4)
     private BigDecimal planCompletionRate;
 
     /** 一次合格率（%） */
+    @Column(name = "first_pass_rate", precision = 10, scale = 4)
     private BigDecimal firstPassRate;
 
     /** OEE 综合效率（%） */
+    @Column(precision = 10, scale = 4)
     private BigDecimal oee;
 
     /** 平均维修时间（小时） */
+    @Column(precision = 10, scale = 4)
     private BigDecimal mttr;
 
     /** 平均故障间隔（小时） */
+    @Column(precision = 10, scale = 4)
     private BigDecimal mtbf;
 
     /** 批次收率（%） */
+    @Column(name = "batch_yield", precision = 10, scale = 4)
     private BigDecimal batchYield;
 
     /** 库存周转率（次/月） */
+    @Column(name = "inventory_turnover", precision = 10, scale = 4)
     private BigDecimal inventoryTurnover;
 
     /** 偏差关闭率（%） */
+    @Column(name = "deviation_closure_rate", precision = 10, scale = 4)
     private BigDecimal deviationClosureRate;
 
     /** CAPA 关闭率（%） */
+    @Column(name = "capa_closure_rate", precision = 10, scale = 4)
     private BigDecimal capaClosureRate;
 
     /** 安灯平均响应时间（分钟） */
+    @Column(name = "andon_response_time", precision = 10, scale = 4)
     private BigDecimal andonResponseTime;
 
-    /** 自定义 KPI 扩展（key=KpiType.name()） */
+    /** 自定义 KPI 扩展（不持久化，使用 IExpand 存储） */
+    @Transient
     private Map<String, BigDecimal> customKpis;
 
     /** 计算时间 */
+    @Column(name = "computed_at", length = 50)
     private String computedAt;
 
     /** 计算人 */
+    @Column(name = "computed_by", length = 100)
     private String computedBy;
 
     /** 备注 */
+    @Column(length = 1000)
     private String remark;
 
+    /** JPA 要求无参构造 */
+    public KpiSnapshot() {
+        super();
+    }
+
     /**
-     * @param code       快照编码（如 "KPI-2026-07-FACTORY-01"）
-     * @param period     统计周期
+     * @param code        快照编码（如 "KPI-2026-07-FACTORY-01"）
+     * @param period      统计周期
      * @param factoryCode 工厂编码
      */
     public KpiSnapshot(String code, String period, String factoryCode) {
@@ -138,7 +162,7 @@ public class KpiSnapshot extends BaseEntity {
      * 获取标准 KPI 值。
      *
      * @param type KPI 类型
-     * @return KPI 值，可能为 null
+     * @return KPI 值
      */
     public BigDecimal getKpiValue(KpiType type) {
         return switch (type) {

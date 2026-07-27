@@ -2,8 +2,10 @@ package com.byz.factory.plm.model;
 
 import com.byz.factory.lifecycle.ILifecycle;
 import com.byz.factory.shared.BaseLifecycleEntity;
+import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
 import java.util.Set;
 
@@ -31,24 +33,16 @@ import java.util.Set;
  *
  * @author 苏政
  */
+@Entity
+@Table(name = "plm_change_request")
 @Data
 @EqualsAndHashCode(callSuper = true)
+@NoArgsConstructor
 public class ChangeRequest extends BaseLifecycleEntity<ChangeRequest.ChangeRequestStatus> {
 
     /** 变更请求状态枚举 */
     public enum ChangeRequestStatus implements ILifecycle.StatusEnum {
-        /** 草稿 */
-        DRAFT,
-        /** 已提交评审 */
-        SUBMITTED,
-        /** 已批准 */
-        APPROVED,
-        /** 已实施 */
-        IMPLEMENTED,
-        /** 已关闭 */
-        CLOSED,
-        /** 已驳回 */
-        REJECTED;
+        DRAFT, SUBMITTED, APPROVED, IMPLEMENTED, CLOSED, REJECTED;
 
         @Override
         public Set<ChangeRequestStatus> allowedTransitions() {
@@ -58,33 +52,41 @@ public class ChangeRequest extends BaseLifecycleEntity<ChangeRequest.ChangeReque
                 case APPROVED    -> Set.of(IMPLEMENTED, REJECTED);
                 case IMPLEMENTED -> Set.of(CLOSED);
                 case CLOSED      -> Set.of();
-                case REJECTED    -> Set.of(DRAFT);  // 驳回后可修改后重新提交
+                case REJECTED    -> Set.of(DRAFT);
             };
         }
     }
 
     /** 关联的蓝图编码 */
+    @Column(name = "blueprint_code", nullable = false, length = 100)
     private String blueprintCode;
 
     /** 变更前的版本号 */
+    @Column(name = "from_version", nullable = false, length = 30)
     private String fromVersion;
 
     /** 变更后的版本号（实施后设置） */
+    @Column(name = "to_version", length = 30)
     private String toVersion;
 
     /** 变更原因（如：客户要求/工艺优化/法规更新/质量改进） */
+    @Column(name = "change_reason", nullable = false, length = 255)
     private String changeReason;
 
     /** 变更描述（详细说明改了什么） */
+    @Column(columnDefinition = "TEXT")
     private String description;
 
     /** 影响的维度（PROCESS / PARAMETER / RESOURCE，逗号分隔） */
+    @Column(name = "affected_dimensions", length = 100)
     private String affectedDimensions;
 
     /** 批准人 */
+    @Column(name = "approved_by", length = 100)
     private String approvedBy;
 
     /** 申请人 */
+    @Column(name = "requested_by", length = 100)
     private String requestedBy;
 
     /**

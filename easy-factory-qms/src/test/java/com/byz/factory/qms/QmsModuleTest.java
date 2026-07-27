@@ -4,7 +4,9 @@ import com.byz.factory.batch.*;
 import com.byz.factory.event.DomainEventPublisher;
 import com.byz.factory.event.IDomainEvent;
 import com.byz.factory.event.types.QmsEventTypes;
+import com.byz.factory.process.action.IQualityAction;
 import com.byz.factory.qms.model.*;
+import com.byz.factory.shared.Dict;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -1080,6 +1082,89 @@ class QmsModuleTest {
     @DisplayName("模块上下文应正常加载")
     void shouldLoadContext() {
         assertTrue(true);
+    }
+
+    // ==================== QualityAction 测试 ====================
+
+    @Test
+    @DisplayName("QualityAction 创建 — IPQC 默认工厂方法")
+    void qualityAction_ipqc_shouldSetCorrectType() {
+        var action = QualityAction.ipqc("QA-001", "IPQC检验", "PLAN-001");
+
+        assertEquals("QA-001", action.getCode());
+        assertEquals("IPQC检验", action.getName());
+        assertEquals("IPQC", action.getInspectionType());
+        assertEquals("PLAN-001", action.getInspectionPlanCode());
+        assertFalse(action.isQualityGate());
+        assertEquals(Dict.Importance.Require, action.getImportance());
+    }
+
+    @Test
+    @DisplayName("QualityAction 创建 — 质量门禁")
+    void qualityAction_gate_shouldSetQualityGate() {
+        var action = QualityAction.gate("QA-GATE", "质量门禁", "PLAN-GATE");
+
+        assertEquals("QA-GATE", action.getCode());
+        assertTrue(action.isQualityGate());
+    }
+
+    @Test
+    @DisplayName("QualityAction 创建 — FQC 工厂方法")
+    void qualityAction_fqc_shouldSetCorrectType() {
+        var action = QualityAction.fqc("QA-002", "最终检验", "PLAN-FQC");
+
+        assertEquals("FQC", action.getInspectionType());
+    }
+
+    @Test
+    @DisplayName("QualityAction 创建 — IQC 工厂方法")
+    void qualityAction_iqc_shouldSetCorrectType() {
+        var action = QualityAction.iqc("QA-003", "来料检验", "PLAN-IQC");
+
+        assertEquals("IQC", action.getInspectionType());
+    }
+
+    @Test
+    @DisplayName("QualityAction 实现 IQualityAction 接口")
+    void qualityAction_implementsInterface() {
+        var action = new QualityAction("QA-001", "测试", "PLAN-001");
+        assertTrue(action instanceof IQualityAction);
+    }
+
+    @Test
+    @DisplayName("QualityAction setRequireResources 应正常设置")
+    void qualityAction_setRequireResources_shouldWork() {
+        var action = new QualityAction("QA-001", "测试", "PLAN-001");
+
+        action.setRequireResources();
+        assertEquals(0, action.requireResources().length);
+    }
+
+    @Test
+    @DisplayName("QualityAction executeQuality 应返回结果")
+    void qualityAction_executeQuality_shouldReturnResult() {
+        var action = new QualityAction("QA-001", "测试", "PLAN-001");
+
+        var result = action.executeQuality(null);
+
+        assertNotNull(result);
+        assertEquals("PLAN-001", result.inspectionPlanCode());
+        assertTrue(result.passed());
+        assertEquals("ACCEPT", result.judgment());
+    }
+
+    @Test
+    @DisplayName("QualityAction 默认重要性为 Require")
+    void qualityAction_defaultImportance_shouldBeRequire() {
+        var action = new QualityAction("QA-001", "测试", "PLAN-001");
+        assertEquals(Dict.Importance.Require, action.getImportance());
+    }
+
+    @Test
+    @DisplayName("QualityAction 默认不需要 gate")
+    void qualityAction_defaultGate_shouldBeFalse() {
+        var action = new QualityAction("QA-001", "测试", "PLAN-001");
+        assertFalse(action.isQualityGate());
     }
 
 }

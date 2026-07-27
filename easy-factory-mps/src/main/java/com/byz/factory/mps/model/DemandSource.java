@@ -2,6 +2,7 @@ package com.byz.factory.mps.model;
 
 import com.byz.factory.mps.IDemandSource;
 import com.byz.factory.shared.BaseEntity;
+import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -24,28 +25,40 @@ import java.time.LocalDate;
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
+@Entity
+@Table(name = "mps_demand_source")
 public class DemandSource extends BaseEntity implements IDemandSource {
 
     /** 来源类型 (SALES_ORDER / FORECAST / SAFETY_STOCK / MANUAL) */
+    @Column(name = "source_type", length = 20)
     private String sourceType;
 
     /** 来源单据号（如销售订单号 SO-001） */
+    @Column(name = "reference_no", nullable = false, length = 100)
     private String referenceNo;
 
     /** 产品编码 */
+    @Column(name = "product_code", nullable = false, length = 100)
     private String productCode;
 
     /** 需求数量 */
+    @Column(nullable = false, precision = 20, scale = 6)
     private BigDecimal quantity;
 
     /** 需求日期 */
+    @Column(name = "due_date", nullable = false)
     private LocalDate dueDate;
 
     /** 优先级（1=最高） */
+    @Column(nullable = false)
     private int priority;
 
     /** 客户（仅销售订单时有效） */
+    @Column(length = 255)
     private String customer;
+
+    /** JPA 无参构造 */
+    protected DemandSource() {}
 
     /**
      * @param referenceNo 来源单据号

@@ -2,6 +2,7 @@ package com.byz.factory.equip.model;
 
 import com.byz.factory.equip.IOEMetrics;
 import com.byz.factory.shared.BaseEntity;
+import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -34,27 +35,36 @@ import java.time.LocalDate;
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
+@Entity
+@Table(name = "equip_oee_metrics")
 public class OEMetrics extends BaseEntity implements IOEMetrics {
 
     /** 关联设备编码 */
+    @Column(nullable = false, length = 100)
     private String equipmentCode;
 
     /** 统计周期起始 */
+    @Column(nullable = false)
     private LocalDate periodStart;
 
     /** 统计周期结束 */
+    @Column(nullable = false)
     private LocalDate periodEnd;
 
     /** 可用率（0~1） */
+    @Column(precision = 6, scale = 4)
     private BigDecimal availability;
 
     /** 性能率（0~1） */
+    @Column(precision = 6, scale = 4)
     private BigDecimal performance;
 
     /** 质量率（0~1） */
+    @Column(precision = 6, scale = 4)
     private BigDecimal quality;
 
     /** OEE 综合效率 = A × P × Q */
+    @Column(precision = 6, scale = 4)
     private BigDecimal oee;
 
     public OEMetrics() {

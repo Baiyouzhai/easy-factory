@@ -10,8 +10,10 @@ import com.byz.factory.shared.BaseLifecycleEntity;
 import com.byz.factory.shared.BumpType;
 import com.byz.factory.shared.IVersionStrategy;
 import com.byz.factory.shared.SemanticVersionStrategy;
+import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,29 +41,39 @@ import java.util.Map;
  *
  * @author 苏政
  */
+@Entity
+@Table(name = "plm_blueprint")
 @Data
 @EqualsAndHashCode(callSuper = true)
+@NoArgsConstructor
 public class Blueprint extends BaseLifecycleEntity<BlueprintStatus> implements IBlueprint {
 
     /** 产品编码 */
+    @Column(name = "product_code", nullable = false, length = 100)
     private String productCode;
 
     /** 版本号（语义版本） */
+    @Column(length = 30, nullable = false)
     private String version;
 
     /** 蓝图描述 */
+    @Column(columnDefinition = "TEXT")
     private String description;
 
-    /** 工序清单 */
+    /** 工序清单（暂不持久化，通过关联表存储） */
+    @Transient
     private List<IProcess> processes;
 
     /** 设计人 */
+    @Column(length = 100)
     private String author;
 
     /** 审批人 */
+    @Column(name = "approved_by", length = 100)
     private String approvedBy;
 
-    /** 版本递增策略（可注入，默认 MINOR 递增） */
+    /** 版本递增策略（运行时注入，不持久化） */
+    @Transient
     private IVersionStrategy versionStrategy;
 
     /**
@@ -80,6 +92,7 @@ public class Blueprint extends BaseLifecycleEntity<BlueprintStatus> implements I
     /** 获取生产工序清单（实现 IBlueprint 接口） */
     @Override
     public List<IProcess> getProductionProcessList() {
+        if (processes == null) processes = new ArrayList<>();
         return processes;
     }
 
@@ -102,21 +115,18 @@ public class Blueprint extends BaseLifecycleEntity<BlueprintStatus> implements I
 
     /**
      * 基于当前蓝图创建新版本草稿。
-     * <p>
-     * 通常由 {@link ChangeRequest} 实施时调用。
      *
-     * @param newVersion  新版本号
+     * @param newVersion   新版本号
      * @param changeReason 变更原因
      * @return 新版本蓝图（草稿状态）
      */
     public Blueprint createNewVersion(String newVersion, String changeReason) {
-        Blueprint next = new Blueprint(this.getCode(), this.getName(), this.productCode);
+        Blueprint next = new Blueprint(this.getCode() + "-v" + newVersion, this.getName(), this.productCode);
         next.setVersion(newVersion);
         next.setDescription(this.description);
         next.setAuthor(this.author);
         next.setProcesses(new ArrayList<>(this.processes));
         next.setVersionStrategy(this.versionStrategy);
-        // 在扩展属性中记录变更原因
         next.setExpandProperty("plm.changeReason", changeReason);
         next.setExpandProperty("plm.previousVersion", this.version);
         return next;

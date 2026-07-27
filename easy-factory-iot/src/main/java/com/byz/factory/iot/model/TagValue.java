@@ -2,8 +2,10 @@ package com.byz.factory.iot.model;
 
 import com.byz.factory.iot.ITagValue;
 import com.byz.factory.shared.BaseEntity;
+import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -16,23 +18,43 @@ import java.time.Instant;
  *
  * @author 苏政
  */
+@Entity
+@Table(name = "iot_tag_value")
 @Data
 @EqualsAndHashCode(callSuper = true)
+@NoArgsConstructor
 public class TagValue extends BaseEntity implements ITagValue {
 
+    @Column(name = "equipment_code", nullable = false, length = 100)
     private String equipmentCode;
+
+    @Column(name = "tag_name", nullable = false, length = 200)
     private String tagName;
+
+    @Convert(converter = JsonValueConverter.class)
+    @Column(name = "raw_value", columnDefinition = "text")
     private Object value;
+
+    @Column(name = "scaled_value", precision = 20, scale = 6)
     private BigDecimal scaledValue;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
     private TagQuality quality;
+
+    @Column(name = "ts_timestamp")
     private Instant timestamp;
+
+    @Column(name = "server_timestamp")
     private Instant serverTimestamp;
+
+    @Column(name = "batch_id", length = 100)
     private String batchId;
 
-    /** 换算系数 */
+    @Column(precision = 20, scale = 6)
     private BigDecimal multiplier;
 
-    /** 偏移量 */
+    @Column(name = "tag_offset", precision = 20, scale = 6)
     private BigDecimal offset;
 
     /**

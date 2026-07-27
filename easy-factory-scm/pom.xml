@@ -10,13 +10,48 @@
     <artifactId>easy-factory-scm</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
+
     <name>easy-factory-scm</name>
 
-    <properties><project.build.sourceEncoding>UTF-8</project.build.sourceEncoding></properties>
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
 
     <dependencies>
-        <dependency><groupId>com.byz.factory</groupId><artifactId>easy-factory-core</artifactId></dependency>
-        <dependency><groupId>org.projectlombok</groupId><artifactId>lombok</artifactId><scope>provided</scope></dependency>
-        <dependency><groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId></dependency>
+        <dependency>
+            <groupId>com.byz.factory</groupId>
+            <artifactId>easy-factory-core</artifactId>
+        </dependency>
+
+        <!-- Spring Data JPA (版本由 spring-boot-dependencies BOM 管理) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+
+        <!-- H2 (单元测试用，版本由 BOM 管理) -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Spring Boot Test (提供 @DataJpaTest 等测试切片) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+        </dependency>
     </dependencies>
 </project>

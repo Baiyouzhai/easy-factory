@@ -323,6 +323,14 @@ docs(walkthrough): 添加阿莫西林贯穿示例
   - 状态枚举实现 ILifecycle.StatusEnum
   - 事件常量放 core event/types/{Module}EventTypes，命名 {module}.{entity}.{past_tense}
 
+持久化 + Service 实现约束:
+  - 每个模块自己建 ddl/V1.x__{module}.sql（不存在"已有人帮你建好"）
+  - Model 类直接加 JPA 注解（@Entity @Table @Column），不新建 Entity 类
+  - Repository 放 {module}/repository/ 包，extends JpaRepository
+  - ServiceImpl 放 {module}/service/impl/，构造器注入 Repository
+  - 写操作 @Transactional，状态变更后 DomainEventPublisher.publish()
+  - JpaConfig.java 扫描路径已预设，不需要修改
+
 完成后在 PROJECT_STATUS.md 写入:
   - 模块约定章节: Core 层新增列表 + 模型表格 + 约定规则 + 待实现清单
   - 更新记录: 日期 + 内容摘要
@@ -344,11 +352,44 @@ docs(walkthrough): 添加阿莫西林贯穿示例
 ### 当前实施顺序
 
 ```
-Phase 1 ✅ erp, iot, plm, equip, scm, dms  → 6/6 约定建立
-Phase 2 ✅ lims, wms, mps                   → 3/3 约定建立
-Phase 3 🔜 mes, aps                         → MES 是集成枢纽(40%+工作量)
-Phase 4 🔜 qms, andon                       → eam 已在 Phase 1 完成
-Phase 5 🔜 bi, web, test
+Phase 1-5 ✅ 模型层全部完成（16/16 模块）
+🔜 持久化层: 全部 16 模块待做，见 TASK_CARDS.md
+```
+
+### 如何启动新会话
+
+```
+1. 复制 TASK_CARDS.md 中对应模块的任务卡发给会话
+2. 会话自行阅读 CLAUDE.md（已包含所有设计约定）
+3. 会话完成后在 PROJECT_STATUS.md 底部写更新记录
+```
+
+### 如何继续模块会话
+
+```
+1. 告诉会话"继续 easy-factory-{module} 的持久化工作"
+2. 会话阅读 PROJECT_STATUS.md 了解当前进度
+3. 会话阅读 ddl/ 目录下已有的 SQL 文件
+4. 继续未完成的部分
+```
+
+### 如何回收任务（协调者验收）
+
+```bash
+# 1. 拉取最新代码
+git pull
+
+# 2. 全量编译 + 测试
+mvn test                                    # 必须全绿
+
+# 3. 检查产出
+ls easy-factory-{module}/src/main/java/com/byz/factory/{module}/repository/
+ls ddl/V1.*.sql
+
+# 4. 检查 PROJECT_STATUS.md 有更新记录
+grep "更新记录\|{module}" PROJECT_STATUS.md
+
+# 5. 如果全部通过，更新 TASK_CARDS.md 勾选该模块
 ```
 
 ---

@@ -16,6 +16,29 @@ import java.util.List;
  * 维护工单 — 继承 BaseLifecycleEntity 获得状态机（OPEN→IN_PROGRESS→COMPLETED→VERIFIED），
  * 实现 IMaintenanceOrder 供 Andon 等模块编译期引用。
  *
+ * <h3>状态机</h3>
+ * <pre>
+ *   OPEN → IN_PROGRESS | CANCELLED
+ *   IN_PROGRESS → COMPLETED
+ *   COMPLETED → VERIFIED
+ *   VERIFIED → (终态)
+ *   CANCELLED → (终态)
+ * </pre>
+ *
+ * <h3>业务便捷方法</h3>
+ * <ul>
+ *   <li>派工/完工/验证：{@link #startWork()} / {@link #completeWork(double, double, String)} / {@link #verifyWork()}</li>
+ *   <li>取消：{@link #cancel()}</li>
+ * </ul>
+ *
+ * <h3>IExpand 约定</h3>
+ * <pre>
+ *   eam.mo.assetName   — 关联资产名称
+ *   eam.mo.faultCode   — 故障代码
+ *   eam.mo.rootCause   — 根因分析
+ *   eam.mo.resolution  — 处理方案描述
+ * </pre>
+ *
  * @author 苏政
  */
 @Data
@@ -69,6 +92,37 @@ public class MaintenanceOrder extends BaseLifecycleEntity<MaintenanceOrderStatus
         this.type = type;
         this.priority = MaintenancePriority.MEDIUM;
         this.spareParts = new ArrayList<>();
+    }
+
+    // ==================== 业务便捷方法 ====================
+
+    /** 开始维修 — OPEN → IN_PROGRESS，自动记录实际开始时间 */
+    public void startWork() {
+        transition(MaintenanceOrderStatus.IN_PROGRESS);
+        this.actualStart = Instant.now();
+        markUpdated();
+    }
+
+    /** 完成维修 — IN_PROGRESS → COMPLETED，记录停机时长/成本/维修人 */
+    public void completeWork(double downtime, double cost, String technician) {
+        transition(MaintenanceOrderStatus.COMPLETED);
+        this.downtime = downtime;
+        this.cost = cost;
+        this.technician = technician;
+        this.actualEnd = Instant.now();
+        markUpdated();
+    }
+
+    /** 验证维修结果 — COMPLETED → VERIFIED */
+    public void verifyWork() {
+        transition(MaintenanceOrderStatus.VERIFIED);
+        markUpdated();
+    }
+
+    /** 取消工单 — OPEN → CANCELLED */
+    public void cancel() {
+        transition(MaintenanceOrderStatus.CANCELLED);
+        markUpdated();
     }
 
 }

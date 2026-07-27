@@ -1,11 +1,13 @@
 package com.byz.factory.wms.model;
 
+import com.byz.factory.shared.BaseLifecycleEntity;
 import com.byz.factory.wms.IReceipt;
 import com.byz.factory.wms.MaterialStatus;
 import com.byz.factory.wms.ReceiptStatus;
-import com.byz.factory.shared.BaseLifecycleEntity;
+import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -28,26 +30,35 @@ import java.util.List;
  *
  * @author 苏政
  */
+@Entity
+@Table(name = "wms_receipt")
 @Data
 @EqualsAndHashCode(callSuper = true)
+@NoArgsConstructor
 public class Receipt extends BaseLifecycleEntity<ReceiptStatus> implements IReceipt {
 
     /** 来源类型（PURCHASE_ORDER / RETURN / TRANSFER） */
+    @Column(length = 30)
     private String sourceType;
 
     /** 来源单号 */
+    @Column(nullable = false, length = 100)
     private String referenceNo;
 
     /** 供应商编码 */
+    @Column(length = 100)
     private String supplierCode;
 
     /** 收货人 */
+    @Column(length = 100)
     private String receivedBy;
 
     /** 收货时间 */
     private Instant receivedAt;
 
     /** 收货明细 */
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "receipt_id")
     private List<ReceiptItem> items;
 
     /**
@@ -146,17 +157,34 @@ public class Receipt extends BaseLifecycleEntity<ReceiptStatus> implements IRece
     /**
      * 收货明细 — 实现 IReceipt.IReceiptItem 供跨模块引用。
      */
+    @Entity
+    @Table(name = "wms_receipt_item")
     @Data
+    @NoArgsConstructor
     public static class ReceiptItem implements IReceipt.IReceiptItem {
 
-        private String materialCode;
-        private String batchNo;
-        private BigDecimal receivedQty;
-        private BigDecimal orderedQty;
-        private String locationCode;
-        private MaterialStatus status;
+        @Id
+        @GeneratedValue(strategy = GenerationType.IDENTITY)
+        private Long id;
 
-        public ReceiptItem() {}
+        @Column(nullable = false, length = 100)
+        private String materialCode;
+
+        @Column(length = 100)
+        private String batchNo;
+
+        @Column(precision = 20, scale = 4)
+        private BigDecimal receivedQty;
+
+        @Column(precision = 20, scale = 4)
+        private BigDecimal orderedQty;
+
+        @Column(length = 100)
+        private String locationCode;
+
+        @Enumerated(EnumType.STRING)
+        @Column(nullable = false, length = 20)
+        private MaterialStatus status;
 
         public ReceiptItem(String materialCode, String batchNo, BigDecimal receivedQty,
                            BigDecimal orderedQty, String locationCode, MaterialStatus status) {

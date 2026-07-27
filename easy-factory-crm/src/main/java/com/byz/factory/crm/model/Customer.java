@@ -2,11 +2,15 @@ package com.byz.factory.crm.model;
 
 import com.byz.factory.crm.ICustomer;
 import com.byz.factory.shared.BaseEntity;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
 /**
- * 客户 — 协作层实体，继承 BaseEntity 获得 code/name/audit，实现 ICustomer 供跨模块引用。
+ * 客户 — 协作层实体，继承 BaseEntity 获得 id/code/name/createdAt/updatedAt，实现 ICustomer 供跨模块引用。
  *
  * <h3>GMP 审计状态</h3>
  * 客户 GMP 审计状态独立于运营状态管理：
@@ -29,29 +33,39 @@ import lombok.EqualsAndHashCode;
  *
  * @author 苏政
  */
+@Entity
+@Table(name = "crm_customer")
 @Data
 @EqualsAndHashCode(callSuper = true)
+@NoArgsConstructor
 public class Customer extends BaseEntity implements ICustomer {
 
     /** 行业 */
+    @Column(length = 50)
     private String industry;
 
     /** 地区 */
+    @Column(length = 50)
     private String region;
 
     /** 联系人列表 (JSON: [{name, role, phone, email}]) */
+    @Column(columnDefinition = "TEXT")
     private String contacts;
 
     /** GMP 审计状态 (PASSED / EXPIRED / NEVER) */
+    @Column(name = "gmp_audit_status", length = 20, nullable = false)
     private String gmpAuditStatus;
 
     /** GMP 审计日期 */
+    @Column(name = "gmp_audit_date", length = 20)
     private String gmpAuditDate;
 
     /** 准时交货率（%） */
+    @Column(name = "on_time_delivery_rate")
     private double onTimeDeliveryRate;
 
     /** 质量投诉率（%） */
+    @Column(name = "quality_complaint_rate")
     private double qualityComplaintRate;
 
     /**

@@ -3,8 +3,12 @@ package com.byz.factory.crm.model;
 import com.byz.factory.crm.ComplaintStatus;
 import com.byz.factory.crm.IComplaint;
 import com.byz.factory.shared.BaseLifecycleEntity;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
 /**
  * 客户投诉 — 协作层实体，客户投诉→QMS CAPA 闭环的起点。
@@ -34,32 +38,43 @@ import lombok.EqualsAndHashCode;
  *
  * @author 苏政
  */
+@Entity
+@Table(name = "crm_complaint")
 @Data
 @EqualsAndHashCode(callSuper = true)
+@NoArgsConstructor
 public class Complaint extends BaseLifecycleEntity<ComplaintStatus> implements IComplaint {
 
     /** 投诉编号 */
+    @Column(name = "complaint_no", length = 100, nullable = false, unique = true)
     private String complaintNo;
 
     /** 客户编码 */
+    @Column(name = "customer_code", length = 100, nullable = false)
     private String customerCode;
 
     /** 关联订单号 */
+    @Column(name = "order_no", length = 100)
     private String orderNo;
 
     /** 关联批次号 */
+    @Column(name = "batch_no", length = 100)
     private String batchNo;
 
     /** 投诉类型 (QUALITY / DELIVERY / PACKAGING / SERVICE / OTHER) */
+    @Column(length = 30, nullable = false)
     private String type;
 
     /** 投诉描述 */
+    @Column(columnDefinition = "TEXT")
     private String description;
 
     /** 处理结果/回复 */
+    @Column(columnDefinition = "TEXT")
     private String resolution;
 
     /** 关联 CAPA 编码 */
+    @Column(name = "capa_code", length = 100)
     private String capaCode;
 
     /**

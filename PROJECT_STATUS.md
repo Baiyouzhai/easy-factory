@@ -12,7 +12,7 @@
 | 接口 | 60+ | process/resource/factory/batch/equip/scm/lims/wms/iot/eam/mps/dms/erp 跨模块契约 |
 | 状态枚举 | 20 | 全部实现 ILifecycle.StatusEnum |
 | 纯值枚举 | 10 | SupplierStatus/MaterialStatus/MaintenanceType 等 |
-| 事件常量类 | 11 | MesEventTypes/EquipEventTypes/PlmEventTypes/LimsEventTypes/MpsEventTypes/DmsEventTypes/IotEventTypes/ApsEventTypes/QmsEventTypes/AndonEventTypes/CrmEventTypes |
+| 事件常量类 | 12 | MesEventTypes/EquipEventTypes/PlmEventTypes/LimsEventTypes/MpsEventTypes/DmsEventTypes/IotEventTypes/ApsEventTypes/QmsEventTypes/AndonEventTypes/CrmEventTypes/EamEventTypes |
 | 操作分析模型 | 15+ | ProcessRouteMatcher/BottleneckDetector/ProductionLeadTime 等 |
 | 测试 | 600+ | core 182 + 各模块集成测试 |
 | 总计 | 91 | 详见 domain-model.md v5 |
@@ -68,22 +68,22 @@
 
 | 模块 | 状态 | 核心模型 | 核心Service接口 |
 |------|------|---------|---------------|
-| `mes` | 约定已建立 | MesWorkOrder + ProcessRecord + ActionRecord | WorkOrderService (11方法) |
-| `qms` | 约定已建立 | InspectionOrder + InspectionPlan + InspectionRecord + Deviation + Capa + QmsEventTypes | InspectionService (12方法) + DeviationService (13方法) + CapaService (10方法) |
+| `mes` | 约定已建立，Service实现完成 | MesWorkOrder + ProcessRecord + ActionRecord | WorkOrderService (11方法) + WorkOrderServiceImpl (内存实现) |
+| `qms` | 约定已建立 | InspectionOrder + InspectionPlan + InspectionRecord + Deviation + Capa + QualityAction + QmsEventTypes | InspectionService (12方法) + DeviationService (13方法) + CapaService (10方法) + InspectionServiceImpl + DeviationServiceImpl + CapaServiceImpl |
 | `plm` | 约定已建立 | ProcessTemplate, Blueprint, ProcessParameter | BlueprintService |
 | `equip` | 约定完成 | Equipment + EquipmentParameter + EquipmentRecipe + OEMetrics + EquipEventTypes | EquipmentService (16方法) |
-| `lims` | 约定已建立 | Formula + WeighingTask + WeighingItem + BatchRecord + LimsEventTypes | FormulaService (10方法) + WeighingTaskService (7方法) + BatchRecordService (8方法) |
+| `lims` | 约定已建立 + 持久化 | Formula + FormulaPhase + WeighingTask + WeighingItem + BatchRecord + LimsEventTypes | FormulaService (10方法) + WeighingTaskService (7方法) + BatchRecordService (8方法) |
 | `erp` | 约定已建立 | MaterialCache, InventorySnapshot, Transaction(TransactionStatus) | ErpAdapterService |
-| `iot` | 约定完成 | DeviceConnection + TagValue + Command(CommandStatus) + AlarmEvent + IotEventTypes | IotGatewayService (13方法) |
-| `eam` | 约定已建立 | Asset, MaintenanceOrder, CalibrationRecord | EamService |
-| `mps` | 约定完成 | ProductionPlan + DemandSource + DemandSourceType + CapacityCheck + MpsEventTypes | MpsService (14方法) |
-| `aps` | 约定已建立 | Schedule + ScheduledTask + ResourceCalendar + RescheduleTrigger + SchedulingRule + ApsEventTypes | ApsService (5方法) |
+| `iot` | 约定完成+持久化 | DeviceConnection + TagValue + Command(CommandStatus) + AlarmEvent + IotEventTypes + 4Repository + IotGatewayServiceImpl | IotGatewayService (13方法) |
+| `eam` | 约定完成 | Asset + MaintenanceOrder + CalibrationRecord + EamEventTypes | EamService (18方法) |
+| `mps` | 持久化完成 | ProductionPlan(JPA) + DemandSource(JPA) + DemandSourceType + CapacityCheck + MpsEventTypes + 2 Repository + MpsServiceImpl | MpsService (14方法) |
+| `aps` | 约定已建立 | Schedule + ScheduledTask + ResourceCalendar + RescheduleTrigger + SchedulingRule + ApsServiceImpl + ApsEventTypes + IOptimizationEngine | ApsService (5方法) |
 | `wms` | 约定已建立 | Storage, Receipt, PickingTask, InventorySnapshot | WmsService (20方法) |
-| `andon` | 约定已建立 | AndonCall(AndonStatus) + EscalationRule + AndonDashboard | AndonService (19方法) |
-| `bi` | 约定已建立 | KpiSnapshot + ProductionDashboard + QualityDashboard + OeeDashboard + InventoryDashboard + KpiType + DashboardPeriod | DashboardService (17方法) |
+| `andon` | 约定已建立 | AndonCall(AndonStatus) + EscalationRule + AndonDashboard + AndonServiceImpl + AndonCallRepository + EscalationRuleRepository | AndonService (19方法) |
+| `bi` | **持久化完成** | KpiSnapshot + ProductionDashboard + QualityDashboard + OeeDashboard + InventoryDashboard + KpiType + DashboardPeriod + DashboardServiceImpl + KpiSnapshotRepository | DashboardService (17方法) |
 | `scm` | 约定已建立 | Supplier, PurchaseOrder(PurchaseOrderStatus) | ScmService |
 | `crm` | 约定已建立 | Customer + SalesOrder(SalesOrderStatus) + Complaint(ComplaintStatus) + SalesOrderItem + CrmEventTypes | CrmService (25方法) |
-| `dms` | 约定已建立 | Document + ApprovalWorkflow + ApprovalStep + DmsEventTypes | DmsService (19方法) |
+| `dms` | **持久化完成** | Document + ApprovalWorkflow + ApprovalStep + DmsEventTypes | DmsService (19方法) + DmsServiceImpl |
 
 ---
 
@@ -302,9 +302,10 @@
 
 ---
 
-## EAM 模块约定（2026-07-18 建立）
+## EAM 模块约定（2026-07-18 建立，2026-07-25 补充）
 
 > **包位置说明**: 以下文件位于 core `com.byz.factory.eam` 包（按制造职能分包），非 `com.byz.factory.batch`。
+> 事件常量位于 core `com.byz.factory.event.types`。
 
 ### Core 层新增（供跨模块引用）
 
@@ -318,13 +319,27 @@
 | 值枚举 | `eam/MaintenancePriority.java` | LOW / MEDIUM / HIGH / EMERGENCY |
 | 值枚举 | `eam/CalibrationResult.java` | PASS / FAIL / ADJUSTED |
 | 值枚举 | `eam/CalibrationType.java` | INTERNAL / EXTERNAL |
+| 事件常量 | `event/types/EamEventTypes.java` | ⭐ 6 个领域事件常量（与 PlmEventTypes/EquipEventTypes 同级）；供 Andon/DMS/MES/ERP 订阅 |
+
+### EAM 模型
+
+| 文件 | 继承 | 实现 | 说明 |
+|------|------|------|------|
+| `model/Asset.java` | `BaseLifecycleEntity<AssetStatus>` | `IAsset` | 资产实体，含 5 个业务便捷方法 + IExpand 文档 |
+| `model/MaintenanceOrder.java` | `BaseLifecycleEntity<MaintenanceOrderStatus>` | `IMaintenanceOrder` | 维护工单，含 4 个业务便捷方法(自动记录时间/成本) + IExpand |
+| `model/CalibrationRecord.java` | `BaseEntity` | `ICalibrationRecord` | 校准记录，含 3 个便捷方法(recordPass/recordFail/recordAdjusted) + IExpand |
+| `service/EamService.java` | — | — | 18 方法：资产查询+生命周期 + 维护工单+查询 + 校准+查询+到期预警 |
 
 ### 约定规则
 
-1. **跨模块接口** — 被其他模块引用的 EAM 实体在 core 定义接口，放在 `com.byz.factory.batch`
+1. **跨模块接口** — 被其他模块引用的 EAM 实体在 core 定义接口，放在 `com.byz.factory.eam`
 2. **状态枚举** — 所有枚举放 core；状态机枚举实现 `ILifecycle.StatusEnum`；纯值枚举为 plain enum
 3. **模型继承** — 有状态实体继承 `BaseLifecycleEntity<S>` + 实现 core 接口；无状态记录继承 `BaseEntity` + 实现 core 接口
-4. **测试规范** — Given-When-Then + `methodName_condition_expectedResult` + `@DisplayName` 中文描述
+4. **业务便捷方法** — Asset/ MaintenanceOrder 对外语义化方法封装 `transition()` + `markUpdated()`，调用方不直接操作 `setStatus()`；MaintenanceOrder 的 `startWork()` 自动记录 `actualStart`，`completeWork()` 自动记录 `actualEnd`/downtime/cost/technician
+5. **领域事件** — 事件常量在 `EamEventTypes` 统一管理（`event/types/`）；Andon 订阅维护开始/完成，DMS 订阅校准记录，MES 订阅资产报废/维护开始
+6. **IExpand 约定** — Asset: `eam.*` 前缀；MaintenanceOrder: `eam.mo.*` 前缀；CalibrationRecord: `eam.cal.*` 前缀
+7. **测试规范** — Given-When-Then + `methodName_condition_expectedResult` + `@DisplayName` 中文描述；29 个测试覆盖构造/底层转换/业务方法/非法操作/IExpand/事件命名
+8. **待实现** — EamService 实现类、维护计划自动生成、备件管理、到期预警自动通知
 
 ---
 
@@ -356,6 +371,17 @@ Equip 管理生产设备的工艺参数、设备配方、运行状态和 OEE 效
 | `model/OEMetrics.java` | `BaseEntity` | `IOEMetrics` | OEE 指标：A×P×Q 计算；工厂方法 `of()` + `toPercentString()` |
 | `event/EquipEventTypes.java` | — | — | **已删除**（迁移至 core `com.byz.factory.event.types.EquipEventTypes`） |
 | `service/EquipmentService.java` | — | — | 16 方法：台账 + 状态 + 配方 + 参数 + OEE |
+| **持久化层（2026-07-25）** | | | |
+| `service/impl/EquipmentServiceImpl.java` | — | `EquipmentService` | 构造器注入 4 Repository + @Transactional + DomainEventPublisher 事件发布 |
+| `repository/EquipmentRepository.java` | `JpaRepository` | — | 按 code/status/category/location 查询 |
+| `repository/EquipmentParameterRepository.java` | `JpaRepository` | — | 按 equipmentCode+paramCode 查询 |
+| `repository/EquipmentRecipeRepository.java` | `JpaRepository` | — | 按 code/equipmentCode/productCode 查询 |
+| `repository/OEMetricsRepository.java` | `JpaRepository` | — | 按设备+周期查询 + 最近一次 OEE |
+| `ddl/V1.3__equip.sql` | — | — | 5 张表：equip_equipment/equip_parameter/equip_recipe/equip_recipe_phase/equip_oee_metrics |
+| **测试** | | | |
+| `EquipModuleTest.java` | — | — | 43 个单元测试 |
+| `repository/EquipmentRepositoryTest.java` | — | — | 4 个集成测试：保存查询/按状态/按类别/按位置 |
+| `repository/OEMetricsRepositoryTest.java` | — | — | 2 个集成测试：周期查询/最近 OEE |
 
 ### 约定规则
 
@@ -366,7 +392,7 @@ Equip 管理生产设备的工艺参数、设备配方、运行状态和 OEE 效
 5. **领域事件** — 事件常量在 `EquipEventTypes` 中统一管理，遵循 `{module}.{entity}.{past_tense}` 命名约定；Equipment 业务方法内部可发布对应事件（通过 `DomainEventPublisher`）
 6. **配方版本** — EquipmentRecipe 通过 `version` 字符串管理版本（默认 "1.0.0"），`bumpVersion()` 执行 MINOR 递增（1.0.0 → 1.1.0）；RecipePhase 为静态内部类，三参数构造默认 rampRate=0
 7. **测试规范** — Given-When-Then + `methodName_condition_expectedResult` + `@DisplayName` 中文描述；覆盖构造、状态转换（正常+故障恢复+换型）、非法转换、业务便捷方法（正常+非法）、参数控制限、配方阶段、OEE 计算、事件命名约定
-8. **待实现** — EquipmentService 实现类、IEquipmentAction 桥接、IoT 参数实时监控、OEE 六大损失采集、REST 控制器
+8. **已完成** — ✅ EquipmentService 实现类 + JPA Repository + DDL + 集成测试（2026-07-25）。**待实现** — IEquipmentAction 桥接、IoT 参数实时监控、OEE 六大损失采集、REST 控制器
 
 ### 高层级审核结论（2026-07-19）
 
@@ -419,7 +445,7 @@ Equip 管理生产设备的工艺参数、设备配方、运行状态和 OEE 效
 8. **BOM 转化** — 契约模型（`BOMConversionRequest/Result` + `IBOMConversionRule`）在 PLM；规则引擎（`IRuleEngine`）委托 Common 模块实现
 9. **测试规范** — Given-When-Then + `methodName_condition_expectedResult` + `@DisplayName` 中文描述
 10. **三阶段管道** — `CustomerSpec → EngineeringBOM → Blueprint(RELEASED)` → MES
-11. **待实现** — BlueprintService 实现类、BOM 规则引擎（Common）、工艺参数标准库
+11. **待实现** — BOM 规则引擎（Common）、工艺参数标准库
 
 ### 跨模块事件契约
 
@@ -488,16 +514,20 @@ SCM 管理上游供应链——供应商主数据、采购订单、来料计划�
 |------|------|------|
 | 接口 | `scm/ISupplier.java` | 供应商抽象，供 WMS/QMS/ERP 引用 |
 | 接口 | `scm/IPurchaseOrder.java` | 采购订单抽象（含 IPurchaseOrderItem 嵌套接口），供 WMS/ERP 引用 |
-| 状态枚举 | `scm/PurchaseOrderStatus.java` | DRAFT→APPROVED→SENT→RECEIVING→COMPLETED；+CANCELLED；实现 `ILifecycle.StatusEnum` |
+| 接口 | `scm/IInboundPlan.java` | 来料计划抽象，供 WMS 引用 |
+| 状态枚举 | `scm/PurchaseOrderStatus.java` | DRAFT→APPROVED→SENT→RECEIVING→COMPLETED；+CANCELLED |
+| 状态枚举 | `scm/InboundPlanStatus.java` | CREATED→NOTIFIED→RECEIVING→COMPLETED；+CANCELLED |
 | 值枚举 | `scm/SupplierStatus.java` | ACTIVE / INACTIVE / BLACKLISTED |
+| 事件常量 | `event/types/ScmEventTypes.java` | 16 个事件类型：SUPPLIER_* (6) + PO_* (6) + INBOUND_* (2) + PREFIX |
 
 ### SCM 模型
 
 | 文件 | 继承 | 实现 | 说明 |
 |------|------|------|------|
-| `model/Supplier.java` | `BaseEntity` | `ISupplier` | 供应商实体，双维度分离：qualification(资质,String) × status(运营,SupplierStatus)，各自独立变化 |
-| `model/PurchaseOrder.java` | `BaseLifecycleEntity<PurchaseOrderStatus>` | `IPurchaseOrder` | 采购订单核心实体，完整状态机 + 明细管理 + 总金额计算 |
-| `model/PurchaseOrderItem.java` | — | `IPurchaseOrder.IPurchaseOrderItem` | 采购明细行，含收货累加（receive/receivedQty/remaining/isFullyReceived） |
+| `model/Supplier.java` | `BaseEntity` | `ISupplier` | 供应商实体，双维度分离 |
+| `model/PurchaseOrder.java` | `BaseLifecycleEntity<PurchaseOrderStatus>` | `IPurchaseOrder` | 采购订单，完整状态机 + @OneToMany 级联明细 |
+| `model/PurchaseOrderItem.java` | —（`@Entity`） | `IPurchaseOrder.IPurchaseOrderItem` | 采购明细行，收货累加 |
+| `model/InboundPlan.java` | `BaseLifecycleEntity<InboundPlanStatus>` | `IInboundPlan` | 来料计划，通知仓库→收货→完成 |
 
 ### 约定规则
 
@@ -508,7 +538,24 @@ SCM 管理上游供应链——供应商主数据、采购订单、来料计划�
 5. **跨模块协作** — SCM→WMS（来料计划触发收货）、SCM←WMS（收货结果更新 PO 进度）、SCM→ERP（采购成本→应付）、SCM→QMS（供应商批次→来料检 IQC）
 6. **测试规范** — Given-When-Then + `methodName_condition_expectedResult` + `@DisplayName` 中文描述；覆盖构造、状态转换、退货、非法转换、终态、采购明细/收货逻辑
 7. **Supplier 双维度分离** — `qualification`（资质，String）和 `status`（运营，SupplierStatus）是两个正交维度，各自独立变化。qualification 用 String 预留对接外部 OA/ERP 时扩展中间态（如 EXPIRING）；status 用枚举直接建模 ACTIVE/INACTIVE/BLACKLISTED 三类运营态。示例：已合格的供应商可因付款纠纷暂停合作（INACTIVE），恢复后可因质量事故拉黑（BLACKLISTED）——两个维度互不绑定
-8. **待实现模型** — InboundPlan（来料计划）、NotificationService（仓库通知）、SupplierScoring（供应商评分）后续按架构文档迭代
+8. **持久化** — JPA 注解直接加在 Model 类上（`@Entity @Table`）；Supplier 用 `@Enumerated(STRING)` 持久化 status；PurchaseOrder 通过 `@OneToMany(cascade=ALL, orphanRemoval=true)` 级联持久化明细行；枚举字段映射到 VARCHAR 列
+9. **服务实现** — `ScmServiceImpl`（@Transactional）含完整生命周期：注册/审核/暂停/恢复供应商 + 创建/审批/发送/收货/取消订单 + 来料计划管理 + 状态自动推进
+10. **待实现** — NotificationService（仓库通知）、SupplierScoring（供应商评分）后续迭代
+
+### 持久化产出
+
+| 类型 | 文件 | 说明 |
+|------|------|------|
+| DDL | `ddl/V1.2__scm.sql` | 4 表：supplier + purchase_order + purchase_order_item + inbound_plan |
+| Repo | `repository/SupplierRepository.java` | 6 查询 |
+| Repo | `repository/PurchaseOrderRepository.java` | 4 查询 |
+| Repo | `repository/InboundPlanRepository.java` | 5 查询 |
+| Service | `service/ScmServiceImpl.java` | @Transactional，3 个 repo 注入，完整 CRUD |
+| 测试 | `repository/ScmRepositoryTest.java` | 23 个 @DataJpaTest |
+| 测试 | `service/ScmServiceImplTest.java` | 18 个 @DataJpaTest + @Import |
+| Repository | `repository/SupplierRepository.java` | 6 个查询方法（findByCode/category/status/qualification/组合查询） |
+| Repository | `repository/PurchaseOrderRepository.java` | 4 个查询方法（findByPoNo/supplierCode/status/approvedBy） |
+| 测试 | `repository/ScmRepositoryTest.java` | 23 个 @DataJpaTest 集成测试：Supplier(10) + PO(11) + 综合(2) |
 
 ---
 
@@ -558,7 +605,8 @@ IoT 是 **设备层的适配和采集中枢**——连接 PLC/SCADA/DCS 等工�
 8. **数据质量** — TagValue 采用 OPC UA 三态质量模型（GOOD/BAD/UNCERTAIN），3 个工厂方法覆盖常见场景（`of`=正常值 / `bad`=传感器故障 / `uncertain`=超量程）
 9. **报警联动** — CRITICAL/EMERGENCY 级别报警触发后，通过 `DomainEventPublisher` 通知 Andon（创建呼叫）、MES（暂停工序）、QMS（发起偏差）、EAM（紧急维护工单）
 10. **测试规范** — Given-When-Then + `methodName_condition_expectedResult` + `@DisplayName` 中文描述；覆盖构造、状态转换（正常+非法+终态）、业务便捷方法、事件命名约定、接口契约
-11. **待实现** — IotGatewayService 实现类、5 种协议适配器实现（OPC UA/Modbus/MQTT/S7/HTTP）、IDataCollectionAction 桥接实现、时序数据库集成（InfluxDB/TimescaleDB）、REST 控制器、报警联动引擎
+11. **待实现** — 5 种协议适配器实现（OPC UA/Modbus/MQTT/S7/HTTP）、IDataCollectionAction 桥接实现、时序数据库集成（InfluxDB/TimescaleDB）、REST 控制器、报警联动引擎
+12. **持久化（2026-07-25 完成）** — 4 个 Model 全部添加 JPA 注解（@Entity/@Table/@Column/@Enumerated/@Convert）；3 个 JSON 属性转换器（JsonMapConverter/JsonListConverter/JsonValueConverter）；4 个 Repository 接口（DeviceConnection/TagValue/Command/AlarmEvent）；IotGatewayServiceImpl 完整实现（设备连接+数据采集+指令下发+报警管理+协议适配器管理+领域事件发布）；DDL V1.5__iot.sql（PostgreSQL 16）；17 个 Repository 集成测试 + 46 个单元测试 = 63 测试全部通过
 
 ### 跨模块事件契约
 
@@ -578,7 +626,7 @@ IoT 是 **设备层的适配和采集中枢**——连接 PLC/SCADA/DCS 等工�
 
 ---
 
-## DMS 模块约定（2026-07-19 建立）
+## DMS 模块约定（2026-07-19 建立，2026-07-19 持久化层完成）
 
 ### 设计定位
 
@@ -588,39 +636,57 @@ DMS 管理制造运营中的 GMP 受控文档——SOP、批记录、检验报�
 
 | 类型 | 文件 | 说明 |
 |------|------|------|
-| 状态枚举 | `dms/DocumentStatus.java` | DRAFT→UNDER_REVIEW→APPROVED→EFFECTIVE→OBSOLETED；+REJECTED；实现 `ILifecycle.StatusEnum` |
-| 值枚举 | `dms/DocumentCategory.java` | SOP / BATCH_RECORD / INSPECTION / DEVIATION / CAPA / VALIDATION / CALIBRATION |
-| 接口 | `dms/IDocument.java` | ⭐ 文档抽象：编号+标题+类别+版本+状态+生效日期+复审周期；供 LIMS/QMS/PLM/EAM 编译期引用 |
 | 事件常量 | `event/types/DmsEventTypes.java` | ⭐ 8 个领域事件常量（与 PlmEventTypes/EquipEventTypes/IotEventTypes 同包 `com.byz.factory.event.types`） |
+
+> **注意**：`DocumentStatus`、`DocumentCategory`、`IDocument` 按项目约定（"内部枚举放模块内"）从 core `batch/` 迁入 DMS 模块 `com.byz.factory.dms` 包，不暴露为跨模块接口。
 
 ### DMS 模型
 
 | 文件 | 继承 | 实现 | 说明 |
 |------|------|------|------|
-| `model/Document.java` | `BaseLifecycleEntity<DocumentStatus>` | `IDocument` | 文档核心实体：完整状态机 + 8 个业务便捷方法 + 版本管理(IncrementalVersionStrategy) + 领域事件发布 + IExpand 文档 |
-| `model/ApprovalWorkflow.java` | `BaseEntity` | — | 审批工作流：多步骤审批流程 + 进度追踪 + 完成判定(isApproved/isRejected) |
-| `model/ApprovalStep.java` | — | — | 审批步骤：角色→人→决定(APPROVED/REJECTED/NEEDS_REVISION/PENDING) + 意见 + 时间戳 |
+| `model/Document.java` | `BaseLifecycleEntity<DocumentStatus>` | `IDocument` | 文档核心实体：`@Entity` JPA 映射 + 完整状态机 + 8 个业务便捷方法 + 版本管理(IncrementalVersionStrategy) + 领域事件发布 + IExpand 文档 |
+| `model/ApprovalWorkflow.java` | `BaseEntity` | — | 审批工作流：`@Entity` JPA 映射 + `@OneToMany` ApprovalStep + 进度追踪 + 完成判定 |
+| `model/ApprovalStep.java` | — | — | 审批步骤：`@Entity` JPA 映射 + 角色→人→决定(APPROVED/REJECTED/NEEDS_REVISION/PENDING) + 意见 + 时间戳 |
 
-### 服务接口
+### DMS 内部枚举/接口
+
+| 文件 | 说明 |
+|------|------|
+| `DocumentStatus.java` | 7 状态枚举：DRAFT→UNDER_REVIEW→APPROVED→EFFECTIVE→OBSOLETED；+REJECTED；实现 `ILifecycle.StatusEnum` |
+| `DocumentCategory.java` | 7 类别：SOP / BATCH_RECORD / INSPECTION / DEVIATION / CAPA / VALIDATION / CALIBRATION |
+| `IDocument.java` | 文档内部契约接口 |
+
+### 持久化层
+
+| 文件 | 说明 |
+|------|------|
+| `repository/DocumentRepository.java` | extends JpaRepository：findByDocumentCode / findByCategory / findByStatus / findByTitleContainingIgnoreCase |
+| `repository/ApprovalWorkflowRepository.java` | extends JpaRepository：findByDocumentCode |
+| `ddl/V1.6__dms.sql` | 3 表：dms_document + dms_approval_workflow + dms_approval_step（含索引） |
+
+### 服务接口/实现
 
 | 文件 | 说明 |
 |------|------|
 | `service/DmsService.java` | 19 方法：文档 CRUD(createDraft/getDocument/listDocuments/searchDocuments/updateContent) + 审批生命周期(submitForReview/approve/reject/makeEffective/obsolete/supersede) + 审批流管理(createApprovalWorkflow/addApprovalStep/executeApprovalStep/getApprovalWorkflow) + 审计追踪(recordAudit/getAuditTrails) + 合规签名(signDocument) |
+| `service/impl/DmsServiceImpl.java` | `@Service @Transactional` 构造器注入 Repository：读写操作 + 审计追踪记录；（Model 层内嵌事件发布，Impl 不重复发布） |
 
 ### 约定规则
 
-1. **跨模块接口** — DMS 实体通过 core `dms/` 包中的接口暴露（`IDocument`）；其他模块通过接口引用 Document，无需直接依赖 DMS 模块
-2. **状态机** — `DocumentStatus` 放 core `dms/` 包中，实现 `ILifecycle.StatusEnum`；Document 继承 `BaseLifecycleEntity<DocumentStatus>` 获得 `transition()` 校验；状态流转：DRAFT→UNDER_REVIEW→APPROVED→EFFECTIVE→OBSOLETED，驳回路径 UNDER_REVIEW→REJECTED→DRAFT
-3. **模型继承** — 有状态实体（Document）继承 `BaseLifecycleEntity<DocumentStatus>` + 实现 core 接口；无状态流程记录（ApprovalWorkflow）继承 `BaseEntity`
-4. **IExpand 约定** — `dms.version` / `dms.category` / `dms.author` / `dms.approvedBy` / `dms.effectiveDate` / `dms.reviewCycle` / `dms.nextReviewDate` / `dms.obsoleteReason` / `dms.rejectionReason` 挂载在 Document 上；`dms.wf.*` 挂载在 ApprovalWorkflow 上
-5. **业务便捷方法** — Document 对外的语义化方法封装状态转换，调用方不直接操作 `setStatus()`；方法：`submitForReview()` / `approve(approvedBy)` / `reject(reason)` / `resubmit()` / `makeEffective(date)` / `obsolete(reason)` / `supersede(reason)` / `createNewVersion(version)`
-6. **领域事件** — 事件常量在 `DmsEventTypes` 中统一管理，遵循 `{module}.{entity}.{past_tense}` 命名约定；Document 业务方法内部通过 `DomainEventPublisher` 发布对应事件
-7. **版本管理** — Document 使用 `IncrementalVersionStrategy`（简单整数递增：1→2→3…）；`bumpVersion()` 执行递增；`supersede()` = 作废旧版 → 创建新版草稿
-8. **审计追踪** — DMS 直接使用 core 的 `AuditTrail` record（entityType/entityId/action/operator/timestamp/before/after/reason），遵循 ALCOA+ 原则
-9. **电子签名** — DMS 审批流使用 core 的 `IElectronicSignature` + `SignatureMeaning`（REVIEWED/APPROVED/VERIFIED），满足 21 CFR Part 11 三要素
-10. **审批流** — ApprovalWorkflow 管理多步骤顺序审批，`executeCurrentStep()` 执行当前待审批步骤，支持 APPROVED/REJECTED/NEEDS_REVISION 三种决定
-11. **测试规范** — Given-When-Then + `methodName_condition_expectedResult` + `@DisplayName` 中文描述；覆盖构造、状态转换（正常+驳回+重新提交）、版本管理、事件发布、审批流、状态机枚举
-12. **待实现** — DmsService 实现类、`IComplianceAction` 实现（清场+复核+签名）、AOP 审计切面、文档模板引擎、REST 控制器
+1. **内部枚举/接口** — `DocumentStatus`、`DocumentCategory`、`IDocument` 按项目约定"内部枚举放模块内"，放在 DMS 模块 `com.byz.factory.dms` 包，不暴露为跨模块接口
+2. **状态机** — `DocumentStatus` 实现 `ILifecycle.StatusEnum`；Document 继承 `BaseLifecycleEntity<DocumentStatus>` 获得 `transition()` 校验；状态流转：DRAFT→UNDER_REVIEW→APPROVED→EFFECTIVE→OBSOLETED，驳回路径 UNDER_REVIEW→REJECTED→DRAFT
+3. **模型继承** — 有状态实体（Document）继承 `BaseLifecycleEntity<DocumentStatus>` + 实现 DMS 内部 `IDocument`；无状态流程记录（ApprovalWorkflow）继承 `BaseEntity`
+4. **JPA 映射** — Model 直接加 `@Entity @Table @Column @Enumerated`，不新建单独 Entity 类；ApprovalWorkflow.steps 用 `@OneToMany(cascade=ALL, orphanRemoval=true)` + `@JoinColumn(name="workflow_id")`
+5. **IExpand 约定** — `dms.version` / `dms.category` / `dms.author` / `dms.approvedBy` / `dms.effectiveDate` / `dms.reviewCycle` / `dms.nextReviewDate` / `dms.obsoleteReason` / `dms.rejectionReason` 挂载在 Document 上；`dms.wf.*` 挂载在 ApprovalWorkflow 上
+6. **业务便捷方法** — Document 对外的语义化方法封装状态转换，调用方不直接操作 `setStatus()`；方法：`submitForReview()` / `approve(approvedBy)` / `reject(reason)` / `resubmit()` / `makeEffective(date)` / `obsolete(reason)` / `supersede(reason)` / `createNewVersion(version)`
+7. **领域事件** — 事件常量在 core `DmsEventTypes` 中统一管理，遵循 `{module}.{entity}.{past_tense}` 命名约定；Document 业务方法内部通过 `DomainEventPublisher` 发布对应事件
+8. **版本管理** — Document 使用 `IncrementalVersionStrategy`（简单整数递增：1→2→3…）；`bumpVersion()` 执行递增；`supersede()` = 作废旧版 → 创建新版草稿
+9. **审计追踪** — DMS 直接使用 core 的 `AuditTrail` record；ServiceImpl 在写操作中记录审计追踪
+10. **电子签名** — 使用 core 的 `IElectronicSignature` + `SignatureMeaning`（REVIEWED/APPROVED/VERIFIED）
+11. **审批流** — ApprovalWorkflow 管理多步骤顺序审批；步骤拒绝/需修订立即终止流程
+12. **Service 实现** — `@Service @Transactional` 构造器注入 Repository；Model 层内嵌事件发布（历史遗留），ServiceImpl 不重复发布事件
+13. **测试规范** — Given-When-Then + `methodName_condition_expectedResult` + `@DisplayName` 中文描述；34 个测试覆盖构造、状态转换、版本管理、事件发布、审批流、状态机
+14. **待实现** — `IComplianceAction` 实现（清场+复核+签名）、AOP 审计切面、文档模板引擎、REST 控制器
 
 ### 跨模块事件契约
 
@@ -712,7 +778,7 @@ LIMS 管理产品配方（物料组成）、配料称量和批记录。配方本
 
 ---
 
-## MPS 模块约定（2026-07-19 建立）
+## MPS 模块约定（2026-07-19 建立，2026-07-25 持久化完成）
 
 ### 设计定位
 
@@ -730,16 +796,25 @@ MPS（主生产计划）根据销售订单、预测需求和库存水平，生�
 
 | 文件 | 继承 | 实现 | 说明 |
 |------|------|------|------|
-| `model/ProductionPlan.java` | `BaseLifecycleEntity<ProductionPlanStatus>` | `IProductionPlan` | 生产计划核心实体：完整状态机 + 6 个业务便捷方法 + 领域事件发布 + PlanItem 内部类 + IExpand 文档 |
-| `model/DemandSource.java` | `BaseEntity` | `IDemandSource` | 需求来源：销售订单/预测/安全库存/手工录入 + 4 个业务方法 + 3 个查询方法 |
+| `model/ProductionPlan.java` | `BaseLifecycleEntity<ProductionPlanStatus>` | `IProductionPlan` | ⭐ JPA: @Entity @Table("mps_production_plan")；完整状态机 + 6 个业务便捷方法 + 领域事件发布 + PlanItem(@Embeddable @ElementCollection) + IExpand 文档 |
+| `model/DemandSource.java` | `BaseEntity` | `IDemandSource` | ⭐ JPA: @Entity @Table("mps_demand_source")；销售订单/预测/安全库存/手工录入 + 4 个业务方法 + 3 个查询方法 |
 | `model/DemandSourceType.java` | — | — | 需求来源枚举：SALES_ORDER / FORECAST / SAFETY_STOCK / MANUAL |
 | `model/CapacityCheck.java` | record | — | 粗产能检查结果值对象：PASS/WARNING/FAIL + 3 个工厂方法 + isAcceptable() |
 
-### 服务接口
+### 持久化层
 
 | 文件 | 说明 |
 |------|------|
-| `service/MpsService.java` | 14 方法：计划 CRUD(create/getPlan/listPlans/addPlanItem) + 生命周期 6 步(approve/reject/release/start/complete/close) + 需求管理(registerDemand/getDemands) + 粗产能检查(checkCapacity) |
+| `repository/ProductionPlanRepository.java` | JPA Repository：findByPlanNo / findByPeriodType / findByStatus / findByPeriodTypeAndStatus / findByApprovedBy |
+| `repository/DemandSourceRepository.java` | JPA Repository：findByReferenceNo / findByProductCode / findBySourceType / findByProductCodeAndSourceType |
+| `ddl/V1.9__mps.sql` | PostgreSQL DDL：mps_production_plan + mps_plan_item + mps_demand_source（3 表 + 6 索引） |
+
+### 服务层
+
+| 文件 | 说明 |
+|------|------|
+| `service/MpsService.java` | 14 方法接口：计划 CRUD(4) + 生命周期(6) + 需求管理(2) + RCCP(1) |
+| `service/impl/MpsServiceImpl.java` | ⭐ 完整实现：构造器注入 Repository + @Transactional + 状态变更后事件发布；checkCapacity 集成 FactoryCapacityProfile 简化产能估算 |
 
 ### 约定规则
 
@@ -751,8 +826,9 @@ MPS（主生产计划）根据销售订单、预测需求和库存水平，生�
 6. **领域事件** — 事件常量在 `MpsEventTypes` 中统一管理，遵循 `{module}.{entity}.{past_tense}` 命名约定；ProductionPlan 业务方法内部通过 `DomainEventPublisher` 发布对应事件；`mps.plan.released` 事件是 MPS→MES 的关键契约（MES 订阅后为每个 PlanItem 生成工单）
 7. **粗产能检查（RCCP）** — `checkCapacity` 应利用 core 的 `FactoryCapacityProfile`（工厂产能画像）和 `BottleneckDetector`（瓶颈识别）进行计算；CapacityCheck 为结果值对象，提供 `pass/warning/fail` 三个工厂方法和 `isAcceptable()` 查询
 8. **PlanItem 模式** — PlanItem 为 ProductionPlan 的静态内部类（@Data + 全参构造），实现 IPlanItem 接口；使用 Lombok @Data 生成 getter（非 record 的 component 访问器），确保与 IPlanItem 接口的 getter 方法签名匹配
-9. **测试规范** — Given-When-Then + `methodName_condition_expectedResult` + `@DisplayName` 中文描述；覆盖构造、状态转换（正常+驳回+非法+终态+全生命周期）、业务便捷方法、PlanItem 增删、查询方法、DemandSource 注册/查询、DemandSourceType 枚举、CapacityCheck 工厂方法/isAcceptable、事件命名约定、IExpand、模块加载
-10. **待实现** — MpsService 实现类、Rest 控制器、具体产能计算逻辑（集成 FactoryCapacityProfile + BottleneckDetector）、需求优先级自动排序算法
+9. **测试规范** — Given-When-Then + `methodName_condition_expectedResult` + `@DisplayName` 中文描述；65 个单元测试覆盖构造、状态转换（正常+驳回+非法+终态+全生命周期）、业务便捷方法、PlanItem 增删、查询方法、DemandSource 注册/查询、枚举、CapacityCheck、事件命名约定、IExpand；26 个集成测试（H2 + @DataJpaTest）覆盖 JPA 映射、Repository 查询、Service 完整生命周期和异常路径
+10. **持久化** — ✅ ProductionPlan/DemandSource 添加 @Entity + @Table + @Column JPA 注解；PlanItem 使用 @Embeddable + @ElementCollection；Repository extends JpaRepository；构造器注入；MpsTestConfig 提供测试 Spring 上下文
+11. **待实现** — Rest 控制器、BottleneckDetector 深度集成（当前为简化产能估算）、需求优先级自动排序算法
 
 ### 跨模块事件契约
 
@@ -801,21 +877,38 @@ WMS 管理物料/成品的仓储运作——收货、上架、拣料、发运、
 | 文件 | 说明 |
 |------|------|
 | `service/WmsService.java` | 20 方法：收货管理(createReceipt/acceptAndPutaway/completeReceipt/closeReceipt/findReceipt) + 拣料管理(createPickingTask/startPicking/completePicking/deliverPicking/cancelPicking/findPickingTask) + 库存管理(queryAvailableStock/getInventorySnapshot/getInventorySnapshots/allocateStock/deallocateStock) + 盘点管理(createCountTask) |
+| `service/impl/WmsServiceImpl.java` | `@Service @Transactional` 构造器注入 Repository：读写操作 + DomainEventPublisher 发布领域事件；（20 个 Service 方法全部实现） |
+
+### Repository
+
+| 文件 | 说明 |
+|------|------|
+| `repository/StorageRepository.java` | findByCode / findByWarehouse / findByWarehouseAndZone / findByStorageType |
+| `repository/ReceiptRepository.java` | findByCode / findByReferenceNo / findBySupplierCode / findByStatus |
+| `repository/PickingTaskRepository.java` | findByCode / findByWorkOrderNo / findByStatus / findByWorkOrderNoAndStatus |
+| `repository/InventorySnapshotRepository.java` | findByCode / findByMaterialCodeAndBatchNoAndLocationCode / findByMaterialCodeAndBatchNo / findByMaterialCode / findByLocationCode / findByStatus / sumAvailableStock(@Query) |
+
+### DDL
+
+| 文件 | 表数 | 说明 |
+|------|------|------|
+| `ddl/V1.8__wms.sql` | 6 | wms_storage / wms_receipt + wms_receipt_item / wms_picking_task + wms_picking_task_item / wms_inventory_snapshot |
 
 ### 约定规则
 
 1. **跨模块接口** — WMS 实体通过 core `wms/` 包中的接口暴露（`IStorage`、`IReceipt`、`IPickingTask`、`IInventorySnapshot`）；其他模块通过接口引用仓储数据，无需直接依赖 WMS 模块
 2. **状态机** — `ReceiptStatus`（已有）、`PickingTaskStatus`（新增）放 core `wms/` 包中，实现 `ILifecycle.StatusEnum`；Receipt/PickingTask 继承 `BaseLifecycleEntity<S>` 获得 `transition()` 校验
 3. **模型继承** — 有状态实体（Receipt, PickingTask）继承 `BaseLifecycleEntity<S>` + 实现 core 接口；无状态记录（Storage, InventorySnapshot）继承 `BaseEntity` + 实现 core 接口
-4. **IExpand 约定** — `wms.location` / `wms.warehouse` / `wms.zone` / `wms.rack` / `wms.level` / `wms.position` / `wms.storageType` / `wms.capacity` 挂载在 Storage 上；`wms.receiptNo` / `wms.sourceType` / `wms.referenceNo` / `wms.supplierCode` 挂载在 Receipt 上；`wms.pickingTask` / `wms.workOrderNo` / `wms.batchNo` / `wms.pickingType` 挂载在 PickingTask 上；`wms.materialCode` / `wms.batchNo` / `wms.locationCode` / `wms.expiryDate` / `wms.lastCounted` / `wms.status` 挂载在 InventorySnapshot 上
-5. **业务便捷方法** — Receipt: `receive(receivedBy)` / `complete()` / `close()` / `addItem()` / `acceptItem(materialCode, locationCode)` / `rejectItem(materialCode)` / `isFullyProcessed()`；PickingTask: `start()` / `completePicking()` / `deliver()` / `cancel()` / `addItem()` / `pickItem()` / `isFullyPicked()`；InventorySnapshot: `addStock(qty)` / `removeStock(qty)` / `allocate(qty)` / `deallocate(qty)` / `quarantine(qty)` / `release(qty)` / `reject(qty)` / `count(qty, countedAt)` + 内置负数防护和上限校验
-6. **跨模块协作** — SCM→WMS（采购订单驱动收货）、WMS←SCM（收货结果更新 PO 进度）、MES→WMS（工单驱动拣料）、WMS→MES（拣料完成确认投料）、WMS→LIMS（物料批次供称量）、WMS→QMS（来料待检通知）、WMS←QMS（来料检结果→放行/退货）、WMS→ERP（库存变更触发财务过账）
-7. **Storage 无生命周期** — 库位不需要状态机（物理位置的创建/禁用由管理操作控制），不实现 ILifecycle；locationCode 映射到继承的 code
-8. **InventorySnapshot 无生命周期** — 库存快照是时点数据记录，不是流程驱动的实体；availableQty 由 getter 动态计算（onHandQty − allocatedQty，负数时返回 0）
-9. **ReceiptItem/PickingTaskItem 模式** — 明细项为静态内部类（@Data + 无参/全参构造），实现对应的嵌套接口；使用 Lombok @Data 生成 getter（非 record 的 component 访问器），确保与接口的 getter 方法签名匹配
-10. **sourceType 保留 String** — 对接不同外部系统（ERP/SCM）时灵活，不限定枚举值，避免因外部系统变更而修改 core
-11. **测试规范** — Given-When-Then + `methodName_condition_expectedResult` + `@DisplayName` 中文描述；覆盖构造、状态转换（正常+非法+终态+取消路径）、业务便捷方法、库存操作（入库/出库/分配/释放/待检/放行/拒收/盘点）、可用量计算、负数防护、接口契约、枚举验证
-12. **待实现** — WmsService 实现类、REST 控制器、条码/RFID 扫码（IoT 集成）、库存事务回传 ERP、批次策略引擎（FIFO/FEFO/LEFO）、线边仓管理
+4. **JPA 映射** — Model 直接加 `@Entity @Table @Column @Enumerated`，不新建单独 Entity 类；Receipt.items 用 `@OneToMany(cascade=ALL, orphanRemoval=true)` + `@JoinColumn(name="receipt_id")`；PickingTask.items 用 `@OneToMany(cascade=ALL, orphanRemoval=true)` + `@JoinColumn(name="task_id")`；ReceiptItem/PickingTaskItem 为 `@Entity` 内部类 + `@NoArgsConstructor`
+5. **IExpand 约定** — `wms.*` 前缀挂载在对应模型上
+6. **业务便捷方法** — Receipt: receive/complete/close/addItem/acceptItem/rejectItem/isFullyProcessed；PickingTask: start/completePicking/deliver/cancel/addItem/pickItem/isFullyPicked；InventorySnapshot: addStock/removeStock/allocate/deallocate/quarantine/release/reject/count + 负数防护
+7. **Service 实现** — `@Service @Transactional` 构造器注入 Repository；读方法 `@Transactional(readOnly = true)`；状态变更后 `DomainEventPublisher.publish(IDomainEvent.of(...))`
+8. **Storage 无生命周期** — 库位不需要状态机，不实现 ILifecycle；locationCode 映射到继承的 code
+9. **InventorySnapshot 无生命周期** — 库存快照是时点数据记录；availableQty 由 @Transient getter 动态计算
+10. **ReceiptItem/PickingTaskItem 模式** — 明细项为静态内部 @Entity 类（@Data + 无参/全参构造），实现对应的嵌套接口
+11. **sourceType 保留 String** — 对接不同外部系统时灵活，不限定枚举值
+12. **测试规范** — Given-When-Then + `@DisplayName` 中文描述；33 个测试覆盖构造、状态转换、业务方法、库存操作、可用量计算、负数防护、接口契约、枚举验证
+13. **待实现** — REST 控制器、条码/RFID 扫码（IoT 集成）、库存事务回传 ERP、批次策略引擎（FIFO/FEFO/LEFO）、线边仓管理
 
 ### 跨模块事件契约
 
@@ -882,7 +975,8 @@ MES（制造执行系统）是 Phase 3 的**集成枢纽**——基于 core 的�
 8. **动作级报工** — 每次 Action 执行后生成一条 `ActionRecord`，实现 `ITraceable` 的 before/after 快照（design-decisions.md §2.2）；ProcessRecord 是工序级聚合视图
 9. **QMS 中断流程** — MES 执行到检验动作 → `Control.Interrupt` → 暂停工序（IN_PROGRESS→INTERRUPTED）→ 发布 `mes.process.interrupted` → QMS 订阅创建 InspectionOrder → QMS 判定后回调 `resumeProcess()` 恢复（design-decisions.md §2.4）；预留超时自动升级为 Andon 异常
 10. **测试规范** — Given-When-Then + `methodName_condition_expectedResult` + `@DisplayName` 中文描述；覆盖 MesWorkOrder 构造+状态转换+蓝图版本冻结+非法转换、ProcessRecord 状态流转+QMS中断+设备故障中断、ActionRecord 与 ITraceable 一致性、ProcessStatus 枚举定义、MesEventTypes 事件常量命名约定、完整链路综合场景
-11. **待实现** — WorkOrderService 实现类、工序流转引擎（动作链遍历+ExecutionMode 路由）、REST 控制器、与 PLM（蓝图解析）/Equip（设备状态）/WMS（物料配送）/LIMS（配方称量）的集成、Andon 超时升级
+11. **已完成** — WorkOrderServiceImpl（内存存储，事件发布，蓝图版本冻结，动作级报工，QMS中断/恢复，interruptProcess钩子）+ BlueprintProvider 解耦接口 + WorkOrderServiceImplTest（28个测试）
+12. **待实现** — 工序流转引擎（ExecutionMode.PARALLEL 并发支持）、REST 控制器、与 PLM/Equip/WMS/LIMS 的集成适配器、Andon 超时升级、数据库持久化替代内存存储
 
 ### 跨模块事件契约
 
@@ -922,6 +1016,7 @@ APS（高级排程系统）在 MPS 确定"生产什么、生产多少、何时�
 | 类型 | 文件 | 说明 |
 |------|------|------|
 | 事件常量 | `event/types/ApsEventTypes.java` | ⭐ 5 个领域事件常量（与 PlmEventTypes/MesEventTypes/MpsEventTypes 等同包 `com.byz.factory.event.types`） |
+| 接口 | `operation/common/IOptimizationEngine.java` | ⭐ 优化引擎抽象接口 — 规则式实现（EDD/SPT/CR）和约束求解（OR-Tools/OptaPlanner）的统一插拔点；含 ruleBased() 工厂方法 |
 
 ### APS 模型
 
@@ -934,6 +1029,7 @@ APS（高级排程系统）在 MPS 确定"生产什么、生产多少、何时�
 | `model/TaskStatus.java` | — | — | 任务状态枚举：SCHEDULED/DISPATCHED/IN_PROGRESS/COMPLETED/CANCELLED |
 | `model/ResourceType.java` | — | — | 资源类型枚举：MACHINE/PERSONNEL（映射自 Dict.SourceGroup 子集） |
 | `service/SchedulingRule.java` | — | — | 排程规则引擎：EDD/SPT/CR 三种 Comparator + of(strategy) 工厂方法 + sort() 就地排序 |
+| `service/impl/ApsServiceImpl.java` | — | `ApsService` | ⭐ 排程服务实现：ConcurrentHashMap 内存存储 + IDomainEvent 事件发布 + 排程编号自增 + query-only getSchedule；createSchedule/optimize/dispatch/reschedule/getSchedule 全部实现 |
 
 ### 服务接口
 
@@ -954,7 +1050,8 @@ APS（高级排程系统）在 MPS 确定"生产什么、生产多少、何时�
 9. **ResourceCalendar 产能约束** — canFit() 检查任务时间是否在可用窗口内（硬约束）；overlapMinutes() 计算重叠时间；getCapacityMinutes() 返回产能分钟数（capacityHours × 60）
 10. **重排程触发** — RescheduleTrigger 记录事件驱动的重排程触发（mes.workorder.released / equip.fault.reported / scm.receipt.delayed）；全量重排程由计划员手动触发（API 调用），不走此记录（design-decisions.md §2.6）
 11. **测试规范** — Given-When-Then + `methodName_condition_expectedResult` + `@DisplayName` 中文描述；覆盖构造、状态转换（正常+非法+终态+全生命周期+取消路径）、TaskStatus/ResourceType 枚举、ScheduledTask 构造+getTotalDurationMin、ResourceCalendar 可用时间计算+canFit+overlapMinutes、RescheduleTrigger 构造+markProcessed、排程规则 EDD/SPT/CR 正确性、ApsEventTypes 事件命名约定+PREFIX、ApsService 接口契约、ScheduleStatus 枚举覆盖、综合集成场景
-12. **待实现** — ApsService 实现类、IOptimizationEngine 接口（预留 OR-Tools/OptaPlanner）、MPS→APS 计划接收、APS→MES 下发集成、资源日历数据库持久化、甘特图数据输出、REST 控制器
+12. **待实现** — OR-Tools/OptaPlanner 约束求解引擎接入（IOptimizationEngine 已预留）、MPS→APS 计划接收集成、APS→MES 下发集成、资源日历数据库持久化、甘特图数据输出、REST 控制器
+13. **服务实现** — ApsServiceImpl 采用 ConcurrentHashMap 内存存储（Phase 3 "先内存实现再持久化"原则）；排程编号自动生成（SCH-yyMMdd-xxxx）；dispatch 时自动计算排程范围（horizonStart/horizonEnd）；reschedule 创建 RescheduleTrigger 记录并发布事件后标记 processed；服务层统一负责事件发布（不内嵌 Model）
 
 ### 跨模块事件契约
 
@@ -1028,8 +1125,10 @@ QMS（质量管理系统）基于 core 的工序/动作模型，在制造过程�
 8. **CAPA 触发规则** — CRITICAL 偏差必须 CAPA；MAJOR 偏差非让步需 CAPA；MINOR 偏差不需 CAPA（`requiresCapa()` 方法封装此逻辑）
 9. **品质门禁** — 脚本 `qms.quality-gate.v1` 实现判定逻辑（放行/让步/拒收），FAIL 时通过 `qms.createDeviation()` 创建偏差并抛出异常中断工序
 10. **SPC 控制** — 脚本 `qms.spc-check.v1` 实现 Western Electric 4 条规则（3σ 超限/连续9点同侧/连续6点趋势/连续14点交替），控制限支持固定值和自动计算两种模式（design-decisions.md §3.2）
-11. **测试规范** — Given-When-Then + `methodName_condition_expectedResult` + `@DisplayName` 中文描述；67 个测试覆盖：构造、状态转换（正常+驳回+非法+终态+完整生命周期+取消路径）、业务便捷方法、事件发布/负载验证、跨模块接口实现验证、IExpand、枚举定义（值枚举+状态枚举转换规则）、事件命名约定、同状态幂等、BigDecimal 比较精度
-12. **待实现** — InspectionService/DeviationService/CapaService 实现类、SPC 实时计算引擎、IQualityAction 实现类、IoT 数据订阅消费、REST 控制器
+11. **测试规范** — Given-When-Then + `methodName_condition_expectedResult` + `@DisplayName` 中文描述；89 个测试覆盖：构造、状态转换（正常+驳回+非法+终态+完整生命周期+取消路径）、业务便捷方法、事件发布/负载验证、跨模块接口实现验证、IExpand、枚举定义（值枚举+状态枚举转换规则）、事件命名约定、同状态幂等、BigDecimal 比较精度、Repository 持久化集成、IQualityAction 桥接
+12. **持久化** — JPA 注解已添加（@Entity/@Table/@Column/@Enumerated/@Transient）；4 个 Repository 接口（InspectionOrder/InspectionPlan/Deviation/Capa）；3 个 Service 实现类（构造器注入 Repository + @Transactional）；DDL 脚本 V1.10__qms.sql（6 张表）
+13. **IQualityAction 桥接** — QualityAction 实现 IQualityAction，提供 4 个工厂方法（ipqc/gate/fqc/iqc），支持质检动作与 MES 工序引擎集成
+14. **待实现** — SPC 实时计算引擎、IoT 数据订阅消费、REST 控制器
 
 ### 跨模块事件契约
 
@@ -1083,11 +1182,25 @@ Andon（安灯系统）是**跨模块异常响应中枢**——接收来自 MES�
 | `EscalationRule.AutoStop` | NONE / PAUSE_PROCESS / STOP_LINE / STOP_FACTORY（内部枚举） |
 | `EscalationRule.EscalateCondition` | TIMEOUT / NO_RESPONSE（内部枚举） |
 
-### 服务接口
+### 服务接口/实现
 
 | 文件 | 说明 |
 |------|------|
 | `service/AndonService.java` | 19 方法：呼叫管理(trigger/acknowledge/escalate/resolve/close) + 呼叫查询(findCall/getActiveCalls/findCallsByWorkOrder/findCallsByEquipment/getUrgentCalls/getDashboard) + 规则管理(createRule/addEscalationLevel/findRule/getActiveRules/disableRule/enableRule) |
+| `service/impl/AndonServiceImpl.java` | ⭐ Service 实现：构造器注入 AndonCallRepository + EscalationRuleRepository；写操作 @Transactional + DomainEventPublisher.publish()；读操作 @Transactional(readOnly=true) |
+
+### Repository
+
+| 文件 | 说明 |
+|------|------|
+| `repository/AndonCallRepository.java` | extends JpaRepository<AndonCall, Long>：findByCode / findByWorkOrderNo / findByEquipmentCode / findByStatus / findByTriggerType |
+| `repository/EscalationRuleRepository.java` | extends JpaRepository<EscalationRule, Long>：findByCode / findByTriggerTypeAndSeverity / findByEnabledTrue |
+
+### DDL
+
+| 文件 | 说明 |
+|------|------|
+| `ddl/V1.11__andon.sql` | andon_call 主表（16业务列+6索引）+ andon_escalation_rule 主表（5业务列+2索引） |
 
 ### 约定规则
 
@@ -1101,8 +1214,8 @@ Andon（安灯系统）是**跨模块异常响应中枢**——接收来自 MES�
 8. **升级联动** — EQUIPMENT_FAULT → 通知 EAM 创建维护工单；QUALITY_ISSUE → 通知 QMS 创建偏差；EMERGENCY → 通知 MES 暂停产线；ESCALATED L4 → AutoStop 自动执行（PAUSE_PROCESS/STOP_LINE/STOP_FACTORY）
 9. **多源事件订阅** — Andon 订阅 `mes.process.interrupted` / `equip.fault.reported` / `qms.spc.out_of_control` / `qms.deviation.created` / `iot.alarm.triggered` / `aps.task.delayed` 自动创建安灯呼叫
 10. **逐级上报逻辑** — escalate() 从 OPEN 或 ACKNOWLEDGED 进入 ESCALATED 状态；每次调用 escalationLevel +1（ESACALATED 状态内持续递增）；CLOSED/RESOLVED 状态拒接上报
-11. **测试规范** — Given-When-Then + `methodName_condition_expectedResult` + `@DisplayName` 中文描述；55 个测试覆盖：构造、状态转换（正常+非法+终态+完整生命周期+取消路径）、业务便捷方法、事件发布/载荷验证、IExpand、枚举定义（TriggerType/AndonSeverity/AndonSource/AutoStop/EscalateCondition）、AndonStatus 状态机转换规则、AndonDashboard 值对象、AndonEventTypes 事件命名约定+PREFIX、AndonService 接口契约、综合场景（设备故障完整上报链/安全事件紧急上报/误触发直接关闭/系统自动触发→人工确认→解决）
-12. **待实现** — AndonService 实现类、REST 控制器、通知渠道适配器（企业微信/钉钉 Webhook/短信/邮件/声光报警）、定时扫描超时自动上报、产线物理 Andon 看板对接
+11. **测试规范** — Given-When-Then + `methodName_condition_expectedResult` + `@DisplayName` 中文描述；**96 个测试**：AndonModuleTest 55 个（构造+状态转换+事件+枚举+综合场景）+ AndonRepositoryTest 12 个（CRUD+状态变更持久化+索引查询+枚举条件查询）+ AndonServiceImplTest 29 个（trigger/acknowledge/escalate/resolve/close + 查询 + 规则管理 + 综合场景 + 异常路径）
+12. **待实现** — REST 控制器、通知渠道适配器（企业微信/钉钉 Webhook/短信/邮件/声光报警）、定时扫描超时自动上报、产线物理 Andon 看板对接
 
 ### 跨模块事件契约
 
@@ -1119,7 +1232,7 @@ Andon（安灯系统）是**跨模块异常响应中枢**——接收来自 MES�
 
 ---
 
-## BI 模块约定（2026-07-25 建立）
+## BI 模块约定（2026-07-25 建立，2026-07-25 持久化完成）
 
 ### 设计定位
 
@@ -1149,6 +1262,14 @@ BI（看板与报表系统）是**协作层只读数据消费模块**——聚�
 |------|------|
 | `service/DashboardService.java` | 17 方法：生产看板(getProductionDashboard/getWorkOrderProgressList/getWorkOrderProgress) + 质量看板(getQualityDashboard/getDeviationStats/getRecentDeviations) + OEE看板(getOeeDashboard/getEquipmentOee/getLowOeeEquipments) + 仓储看板(getInventoryDashboard/getSlowMovingItems/getNearExpiryItems) + KPI管理(computeKpi/getKpiSnapshot/getKpiHistory/getLatestKpi) + 批次追溯(getBatchReport) |
 
+### 持久化层
+
+| 类型 | 文件 | 说明 |
+|------|------|------|
+| DDL | `ddl/V1.12__bi.sql` | kpi_snapshot 表 + 4 索引（code/period/factory_code/复合） |
+| Repository | `repository/KpiSnapshotRepository.java` | 6 方法：findByCode + findByFactoryCodeAndPeriod + findByFactoryCodeOrderByPeriodDesc + findLatestByFactoryCode(@Query) + findTopByFactoryCodeOrderByPeriodDesc + deleteByFactoryCodeAndPeriod |
+| Service实现 | `service/impl/DashboardServiceImpl.java` | 构造器注入 KpiSnapshotRepository；computeKpi 覆盖重建策略(delete+flush+save)；KPI 快照 CRUD 完整实现；看板查询返回占位数据(Phase 5 跨模块集成时实现)；@Transactional 写操作 + DomainEventPublisher 事件发布 |
+
 ### 约定规则
 
 1. **协作层只读消费** — BI 不定义 core 接口供其他模块编译期引用（其他模块不依赖 BI）；BI 通过领域事件订阅各模块数据变更，通过 Service 接口聚合生成看板和 KPI
@@ -1162,8 +1283,13 @@ BI（看板与报表系统）是**协作层只读数据消费模块**——聚�
 9. **批次追溯报告** — `getBatchReport(batchNo)` 聚合 MES 工序记录 + LIMS 称量记录 + QMS 检验记录 + 收率计算，为 GMP 合规提供完整的批次追溯数据
 10. **报表引擎** — Phase 5 用 SQL 视图 + JSON API；不引入 Grafana/Superset（design-decisions.md §4.10）
 11. **前端技术栈** — 与 web 模块统一（Vue 3），不独立部署；实时推送用 SSE；移动端出响应式 Web（PWA）
-12. **测试规范** — Given-When-Then + `methodName_condition_expectedResult` + `@DisplayName` 中文描述；81 个测试覆盖：KpiType/DashboardPeriod 枚举（metadata），KpiSnapshot（构造+setKpiValue 全10种+getKpiValue/markComputed/isFullyComputed/getComputedKpiCount+IExpand），ProductionDashboard（构造+empty+hasInterruptedOrders+getCompletionRatio+WorkOrderProgress record），QualityDashboard（构造+empty+hasOpenDeviations+getPassRatio+DeviationSummary record），OeeDashboard（构造+empty+hasLowOeeEquipment+getEquipmentCount+EquipmentOee 趋势值），InventoryDashboard（构造+empty+hasSlowMovingItems+hasNearExpiryItems+getAvailabilityRate+SlowMovingItem/NearExpiryItem record），BiEventTypes（PREFIX+6事件命名+前缀约定+不可实例化），DashboardService（17方法签名），综合场景（生产全流程/KPI累积计算/OEE趋势/偏差趋势/仓储双风险）
-13. **待实现** — DashboardService 实现类、REST 控制器、SSE 推送端点、事件订阅与增量 KPI 更新引擎、SQL 视图定义、Vue 3 前端看板组件、响应式 PWA 移动端
+12. **测试规范** — Given-When-Then + `methodName_condition_expectedResult` + `@DisplayName` 中文描述；**116 个测试**覆盖：
+  - **模型测试（81）**: KpiType/DashboardPeriod 枚举（metadata），KpiSnapshot（构造+setKpiValue全10种+getKpiValue/markComputed/isFullyComputed/getComputedKpiCount+IExpand），4个Dashboard record值对象（构造+empty工厂方法+语义化查询+嵌套record），BiEventTypes（PREFIX+6事件命名+前缀约定+不可实例化），DashboardService接口契约（17方法签名），综合场景（生产全流程/KPI累积计算/OEE趋势/偏差趋势/仓储双风险）
+  - **持久化集成测试（35）**: computeKpi（创建/覆盖/多工厂/多周期）+ KPI查询（getKpiSnapshot/getKpiHistory升序/getLatestKpi/限制条数/空数据）+ KPI值管理（setKpiValue持久化/全部10种往返/getKpiValue一致性/isFullyComputed）+ 看板查询（4个Dashboard+7个子查询返回占位数据）+ Repository CRUD（save/findByCode/findByFactoryCodeAndPeriod精确匹配/降序排序/deleteByFactoryCodeAndPeriod/findTopByFactoryCode）+ 综合场景（月度KPI全流程/多工厂隔离/重新计算覆盖）
+13. **KPI 覆盖重建** — `computeKpi()` 对同工厂同周期的已有快照执行 `delete→flush→save` 策略确保覆盖，避免 code 唯一约束冲突
+14. **看板占位返回** — 看板聚合查询（生产/质量/OEE/仓储 Dashboard）当前返回空占位数据，待 Phase 5 跨模块集成时实现真实的数据聚合
+15. **已实现** — KpiSnapshot JPA实体（@Entity/@Table/@Column注解+JPA无参构造）、KpiSnapshotRepository（6查询方法）、DashboardServiceImpl（17方法：KPI CRUD完整实现+看板占位返回+@Transactional+事件发布）、BiTestConfig（Spring Boot DataJpaTest配置）、V1.12 DDL
+16. **待实现** — 看板跨模块数据聚合、SSE推送端点、REST控制器方法实现（已定义在web模块DashboardController中）、事件订阅与增量KPI更新引擎、SQL视图定义、Vue 3前端看板组件、响应式PWA移动端
 
 ### 跨模块事件契约
 
@@ -1283,7 +1409,7 @@ easy-factory-web/
 
 ---
 
-## CRM 模块约定（2026-07-25 建立）
+## CRM 模块约定（2026-07-25 建立，2026-07-26 实现）
 
 ### 设计定位
 
@@ -1329,7 +1455,8 @@ CRM（客户关系管理）是**协作层模块**——管理客户主数据、�
 10. **投诉→QMS 闭环** — 质量问题投诉（type=QUALITY）创建后，QMS 通过订阅 `crm.complaint.received` 创建偏差 → CAPA 处理 → 投诉通过 `linkCapa()` 关联 CAPA 编码追溯
 11. **GMP 审计管理** — Customer 内建 GMP 审计状态（PASSED/EXPIRED/NEVER），通过 `passGmpAudit()`/`expireGmpAudit()` 操作；审计状态影响是否可接受医药类订单
 12. **测试规范** — Given-When-Then + `methodName_condition_expectedResult` + `@DisplayName` 中文描述；62 个测试覆盖：构造、状态转换（正常+非法+终态+完整生命周期+取消路径）、业务便捷方法、IExpand、枚举定义（SalesOrderStatus/ComplaintStatus 转换规则+CrmEventTypes 10事件命名约定+PREFIX+不可实例化）、CrmService 接口契约（25方法签名）、综合场景（客户订单全流程/质量投诉CAPA闭环/交期延误投诉/订单取消/误投诉撤销）
-13. **待实现** — CrmService 实现类、REST 控制器、企业微信/邮件通知适配器、客户门户（Web端自助查订单进度/提交投诉）
+13. **已完成** — ✅ CrmServiceImpl 实现类（128行，构造器注入+事务管理+事件发布） + ✅ 3 个 Repository 接口（CustomerRepository/SalesOrderRepository/ComplaintRepository） + ✅ JPA 实体映射（4 模型全注@Entity/@Table/@Column）+ ✅ DDL V1.13__crm.sql（4 表+索引）+ ✅ CrmTestConfig + ✅ CrmServiceImplTest（28 个集成测试）+ ✅ POM 加入 JPA/H2/Test 依赖
+14. **待实现** — 企业微信/邮件通知适配器、客户门户（Web端自助查订单进度/提交投诉）
 
 ### 跨模块事件契约
 
@@ -1398,23 +1525,36 @@ test ← 所有模块(common, core, mes, qms, plm, equip, lims, erp, iot, eam, m
 
 | 日期 | 内容 |
 |------|------|
+| 2026-07-25 | **WMS 持久化层完成**：JPA 注解(@Entity/@Table/@Column/@Enumerated/@OneToMany)全部4模型+2嵌套类 + 4 个 Repository(Storage/Receipt/PickingTask/InventorySnapshot) + WmsServiceImpl(构造器注入+@Transactional+DomainEventPublisher) + DDL(V1.8__wms.sql, 6表) + POM 升级(spring-boot-starter-data-jpa+h2+spring-boot-starter-test) + 33 测试全过 |
+| 2026-07-25 | **Equip 持久化层完成**：JPA 注解(@Entity/@Table/@Column) + 4 个 Repository + EquipmentServiceImpl(构造器注入+@Transactional+DomainEventPublisher) + DDL(V1.3__equip.sql, 5表) + TestConfig + 6 个集成测试 + 49 测试全过 |
+| 2026-07-25 | **EAM 模块约定补充**：Asset/MaintenanceOrder/CalibrationRecord 业务便捷方法 + IExpand 文档 + EamEventTypes 迁入 core event/types + EamService 扩展(12→18方法) + 29 个测试 + eam.md 更新 |
 | 2026-07-25 | **Test 模块约定建立**：POM 扩展依赖全部15个业务模块 + 42 个跨模块集成测试（12 个测试组覆盖: 模块加载、事件契约、MES+QMS、MES+Equip、MES+WMS、WMS+SCM、MES+LIMS、Andon多源事件、BI数据消费、计划排程执行、阿莫西林端到端、DMS+EAM+IoT+ERP+PLM综合验证）+ 父 POM dependencyManagement 补全所有模块版本 + web 模块编译修复 |
 | 2026-07-19 | **池→线固化裁定**：三层描述体系正式确定；否决能力匹配引擎；core/PLM/Equip/MES/Physical 五会话任务卡列出 |
 | 2026-07-19 | **高层设计**：核心层vs协作层边界 + CRM设计 + 协作协议建立 |
+| 2026-07-25 | **APS 模块服务层实现**：1 个 core 新增(IOptimizationEngine 优化引擎抽象) + ApsServiceImpl 实现(ConcurrentHashMap存储+事件发布+5方法全部实现) + easy-factory-aps pom.xml 补充 JPA 依赖 + 28 个服务实现测试（内存存储/事件发布/重排程/IOptimizationEngine）→ APS 模块合计 91 个测试 |
 | 2026-07-19 | **APS 模块约定建立**：1 个 core 新增(ApsEventTypes 5事件) + 5 个模型(Schedule升级+ScheduledTask内嵌类+ResourceCalendar新建+RescheduleTrigger新建+TaskStatus枚举+ResourceType枚举) + SchedulingRule 排程规则引擎(EDD/SPT/CR) + ApsService 接口(5方法) + 63 个测试 |
+| 2026-07-19 | **MES 模块 Service 实现完成**：BlueprintProvider 解耦接口 + WorkOrderServiceImpl 内存实现（工单生命周期+工序流转+动作报工+QMS中断恢复+事件发布）+ mes pom.xml 添加 spring-boot-starter-data-jpa provided 依赖 + WorkOrderServiceImplTest 28 个测试 + 完整生命周期集成测试全通过。全项目 BUILD SUCCESS（60 个 MES 测试） |
 | 2026-07-19 | **MES 模块约定建立**：2 个 core 新增(ProcessStatus 枚举 + MesEventTypes 10事件) + 3 个模型(MesWorkOrder升级+ProcessRecord新建+ActionRecord新建) + WorkOrderService 接口扩展(6→11方法) + 32 个测试 |
 | 2026-07-19 | **WMS 模块约定完成**：4 个 core 接口(IStorage/IReceipt/IPickingTask/IInventorySnapshot) + 4 个 core 枚举(PickingTaskStatus/StorageType/PickingType/MaterialStatus) + 4 个模型(Storage重构+Receipt重构+PickingTask新建+InventorySnapshot新建) + WmsService扩展(4→20方法) + 33 个测试 |
+| 2026-07-25 | **LIMS 模块持久化完成**：接口/枚举迁至 core `com.byz.factory.lims` 包（匹配 equip 模式）+ JPA 注解全部模型 + DDL(V1.7__lims.sql, 9表) + 3 Repository + 3 ServiceImpl + 5 持久化集成测试；总计 52 测试全部通过 |
 | 2026-07-19 | **LIMS 模块约定完成**：3 个 core 状态枚举(FormulaStatus/WeighingTaskStatus/BatchRecordStatus) + 3 个 core 接口(IFormula/IWeighingTask/IBatchRecord) + LimsEventTypes(9事件) + 4 个模型(Formula重写+WeighingTask+WeighingItem+BatchRecord) + 3 个服务接口(FormulaService 10方法/WeighingTaskService 7方法/BatchRecordService 8方法) + 脚本迁移(mes→lims) + 新建批记录生成脚本 + 47 个测试 |
+| 2026-07-25 | **MPS 持久化层完成**：2 个模型添加 JPA 注解 + 2 个 Repository + MpsServiceImpl (14方法) + V1.9__mps.sql (3表6索引) + MpsTestConfig + 26 个集成测试 (H2 @DataJpaTest) |
 | 2026-07-19 | **MPS 模块约定完成**：2 个 core 接口(IProductionPlan/IDemandSource) + MpsEventTypes(8事件) + 4 个模型(ProductionPlan增强 + DemandSource + DemandSourceType + CapacityCheck) + MpsService扩展(4→14方法) + 47 个测试 |
-| 2026-07-19 | **DMS 模块约定完成**：3 个 core 接口/枚举(IDocument/DocumentCategory/DocumentStatus扩展) + DmsEventTypes(8事件) + 3 个模型(Document + ApprovalWorkflow + ApprovalStep) + DmsService 扩展(5→19方法) + 30 个测试 |
+| 2026-07-19 | **DMS 持久化层完成**：DocumentStatus/DocumentCategory/IDocument 按约定迁入 DMS 模块 + 3 个模型添加 JPA 注解 + 2 个 Repository + DDL(V1.6, 3表) + DmsServiceImpl(构造器注入) + 34 个测试全通过 |
+| 2026-07-19 | **DMS 模块约定完成**：DmsEventTypes(8事件) + 3 个模型(Document + ApprovalWorkflow + ApprovalStep) + DmsService 扩展(5→19方法) + 34 个测试 |
+| 2026-07-25 | **IoT 模块持久化层完成**：接口从 core/batch 迁移至 IoT 模块自身包(com.byz.factory.iot)；4 个 Model 添加 JPA 注解 + 3 个 JSON 转换器；DDL V1.5__iot.sql；4 个 Repository + IotGatewayServiceImpl(17方法+领域事件发布)；17 个仓库集成测试；63 测试全通过 |
 | 2026-07-19 | **IoT 模块约定完成**：5 个 core 接口/枚举(IDeviceConnection/ITagValue/ICommand/IAlarmEvent/CommandStatus) + IotEventTypes(9事件) + 4 个模型 + 2 个服务接口(IotGatewayService 13方法/IProtocolAdapter) + 46 个测试 |
 | 2026-07-19 | **Equip → Core 回归审核通过**：4 个议题决议（IEquipmentBinding渐进迁移/BOM引用Recipe双轨/FactoryCapacityProfile双轨/EventTypes迁至event.types包）；详见 `docs/architecture/modules/equip-core-regression.md` 五-六章 |
 | 2026-07-19 | **Equip → Core 回归**：5 个接口回归 core(IEquipment/IEquipmentParameter/IEquipmentRecipe/IOEMetrics) + EquipEventTypes 迁入 core；equip 模型全部实现新接口；跨模块影响分析文档 → `docs/architecture/modules/equip-core-regression.md` |
 | 2026-07-19 | Equip 模块约定补充：Equipment 业务便捷方法 + EquipmentParameter + EquipmentRecipe + OEMetrics + EquipEventTypes + EquipmentService 扩展(4→16方法) + 38 个测试 |
+| 2026-07-25 | PLM 模块持久化层完成：DDL + JPA注解 + 4 Repository + BlueprintServiceImpl + 77 测试（31模型 + 19仓库 + 27服务） |
 | 2026-07-19 | PLM 模块约定第二次补充：BOM转化模型 + ChangeRequest + 版本管理抽象(core) + 领域事件契约 + Common规则引擎需求 |
 | 2026-07-19 | PLM 模块约定第一次补充：Blueprint 业务便捷方法 + ProcessTemplate 便捷方法 + BlueprintDifferImpl + IExpand 文档 + 31 个测试 |
-| 2026-07-19 | SCM 模块初步约定建立：4 个 core 接口/枚举 + 3 个模型 + ScmService 扩展 + 39 个测试 |
-| 2026-07-18 | ERP 模块初步约定建立：3 个枚举 + 3 个模型 + ErpAdapterService 扩展 + 13 个测试 |
+| 2026-07-25 | **ERP Service 实现完成**：ErpAdapterServiceImpl（首个 Service 实现）+ ErpEventTypes + 17 个 Mock 测试；erp 73 测试 / 全项目全过 |
+| 2026-07-25 | **ERP 持久化层完成**：BaseEntity/BaseLifecycleEntity 升级 @MappedSuperclass+JPA 审计；3 模型加 JPA 注解；3 Repository；15 个 @DataJpaTest；全项目 20 模块全过 |
+| 2026-07-25 | SCM 模块服务实现：ScmServiceImpl + InboundPlan 模型 + ScmEventTypes(16事件) + 29 个测试 |
+| 2026-07-25 | SCM 模块持久化：DDL(4表) + JPA 注解 + 3 个 Repository + 23 个 @DataJpaTest |
+| 2026-07-19 | SCM 模块初步约定建立：4 个 core 接口/枚举 + 3 个模型 + ScmService 扩展 + 39 个测试 || 2026-07-18 | ERP 模块初步约定建立：3 个枚举 + 3 个模型 + ErpAdapterService 扩展 + 13 个测试 |
 | 2026-07-18 | PLM 模块初步约定建立：BlueprintStatus 状态枚举 + IBlueprintDiffer + BlueprintDiff + 3 个模型 + BlueprintService + 15 个测试 |
 | 2026-07-18 | Equip 模块初步约定建立：升级 MachineStatus 状态机 + 10 个测试 + 扩展字段 |
 | 2026-07-18 | EAM 模块初步约定建立：3 个 core 接口 + 5 个枚举 + 3 个模型 + 服务接口 + 测试 |
@@ -1423,8 +1563,12 @@ test ← 所有模块(common, core, mes, qms, plm, equip, lims, erp, iot, eam, m
 | 2026-07-12 | 8个业务模块骨架创建，编译通过 |
 | 2026-07-12 | 初始创建，core 接口体系完成 |
 | 2026-07-19 | **Core 设计完善 v5**：删除死代码(script/Action/IProcessRoute/ProcessCompatibilityChecker)；新建 10 个模型(IAuditable/AuditTrail/IElectronicSignature/SignatureMeaning/MachineStatus/UOM/IProcessParameter/IMethod/IEnvironment/IBillOfMaterial)；20 个状态枚举全部实现；23 个跨模块接口全部就位；8 个事件类型常量类完整；DomainEventPublisher 前缀匹配+unsubscribe 已修复；IActionModel.execute() 空指针已保护；Noting→Nothing 全局修正；SourceType 扩展至 18 值；计算器泛型化；formatDuration 公共提取；require() 默认值统一；PROJECT_STATUS.md 更新至 v1.0；domain-model.md 更新至 v5；各模块文档追加 AI 协作建议 |
-| 2026-07-24 | **QMS 模块约定建立**：9 个 core 新增(IInspectionRecord/IDeviation/ICapa + InspectionType/DeviationSeverity/DeviationDisposition/DeviationStatus/CapaStatus + QmsEventTypes 18事件) + 5 个模型(InspectionOrder升级+InspectionPlan新建+InspectionRecord新建+Deviation新建+Capa新建) + 3 个服务接口(InspectionService 3→12方法 + DeviationService 13方法 + CapaService 10方法) + 67 个测试
-| 2026-07-25 | **Andon 模块约定建立**：1 个 core 新增(AndonEventTypes 7事件) + 1 个 core 修改(AndonStatus OPEN→ESCALATED 紧急通道) + 3 个值枚举(TriggerType/AndonSeverity/AndonSource) + 2 个内部枚举(AutoStop/EscalateCondition) + 3 个模型(AndonCall重写+EscalationRule新建+AndonDashboard新建) + AndonService 接口扩展(4→19方法) + 55 个测试
+| 2026-07-24 | **QMS 模块约定建立**：9 个 core 新增(IInspectionRecord/IDeviation/ICapa + InspectionType/DeviationSeverity/DeviationDisposition/DeviationStatus/CapaStatus + QmsEventTypes 18事件) + 5 个模型(InspectionOrder升级+InspectionPlan新建+InspectionRecord新建+Deviation新建+Capa新建) + 3 个服务接口(InspectionService 3→12方法 + DeviationService 13方法 + CapaService 10方法) + 67 个测试 |
+| 2026-07-25 | **QMS 模块持久化实现**：POM 更新(JPA+H2+Spring Boot Test) + 5 个模型添加 JPA 注解 + 4 个 Repository + 3 个 ServiceImpl(构造器注入+@Transactional) + DDL V1.10__qms.sql(6张表) + IQualityAction 桥接(QualityAction+4工厂方法) + 89 个测试全部通过
+| 2026-07-25 | **Andon 模块约定建立**：1 个 core 新增(AndonEventTypes 7事件) + 1 个 core 修改(AndonStatus OPEN→ESCALATED 紧急通道) + 3 个值枚举(TriggerType/AndonSeverity/AndonSource) + 2 个内部枚举(AutoStop/EscalateCondition) + 3 个模型(AndonCall重写+EscalationRule新建+AndonDashboard新建) + AndonService 接口扩展(4→19方法) + 55 个测试 |
+| 2026-07-25 | **Andon 持久化层实现**：JPA 注解(AndonCall @Entity+@Table + EscalationRule @Entity+@Table) + AndonCallRepository(5查询方法) + EscalationRuleRepository(3查询方法) + AndonServiceImpl(19方法全部实现，@Service+构造器注入+@Transactional+DDP) + DDL V1.11__andon.sql + AndonTestConfig + 41 个新测试(AndonRepositoryTest 12 + AndonServiceImplTest 29) → 全项目 BUILD SUCCESS |
 | 2026-07-25 | **BI 模块约定建立**：1 个 core 新增(BiEventTypes 6事件) + 2 个枚举(KpiType 10种标准KPI + DashboardPeriod 7种周期) + 5 个模型(KpiSnapshot重写继承BaseEntity + ProductionDashboard/QualityDashboard/OeeDashboard/InventoryDashboard 4个record值对象) + DashboardService 接口扩展(4→17方法) + 81 个测试
+| 2026-07-25 | **BI 模块持久化完成**：ddl/V1.12__bi.sql(kpi_snapshot表+4索引) + KpiSnapshot JPA注解(@Entity/@Table/@Column+JPA无参构造) + KpiSnapshotRepository(6查询方法) + DashboardServiceImpl(17方法：KPI CRUD完整实现 + 看板占位返回 + @Transactional + DomainEventPublisher事件发布) + BiTestConfig + DashboardServiceImplTest(35个集成测试) + pom.xml 依赖更新(spring-boot-starter-data-jpa/h2/fastjson2)；全部 116 个测试通过
+| 2026-07-26 | **CRM 模块持久化完成**：POM 新增 JPA/H2/Test 依赖 + 4 模型完整 JPA 注解(@Entity/@Table/@Column/@OneToMany) + ddl/V1.13__crm.sql(4表+11索引) + 3 个 Repository(CustomerRepository/SalesOrderRepository/ComplaintRepository，14个查询方法) + CrmServiceImpl(128行，构造器注入+事务管理+事件发布) + CrmTestConfig + CrmServiceImplTest(28个集成测试) + 全部 90 个测试通过 |
 | 2026-07-25 | **CRM 模块约定建立**：6 个 core 新增(ICustomer/ISalesOrder/IComplaint/SalesOrderStatus/ComplaintStatus + CrmEventTypes 10事件) + 4 个模型(Customer重写+SalesOrder重写+SalesOrderItem新建+Complaint新建) + CrmService 接口扩展(3→25方法) + 62 个测试 + web CrmController 更新(BigDecimal参数) + overview.md Phase 5 状态更新 |
 | 2026-07-25 | **Web 模块约定建立**：Spring Boot 3.x 启动类 + 2 个公共组件(Result/PageResult) + 全局异常处理器 + CORS 配置 + 20 个 Controller(覆盖全部 16 个业务模块) + 259 个 REST 端点 + application.yml(SpringDoc 16 Group) + 37 个测试

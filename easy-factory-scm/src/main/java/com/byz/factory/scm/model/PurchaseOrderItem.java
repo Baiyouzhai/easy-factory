@@ -1,7 +1,14 @@
 package com.byz.factory.scm.model;
 
 import com.byz.factory.scm.IPurchaseOrder;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -11,22 +18,34 @@ import java.time.LocalDate;
  *
  * @author 苏政
  */
+@Entity
+@Table(name = "scm_purchase_order_item")
 @Data
+@NoArgsConstructor
 public class PurchaseOrderItem implements IPurchaseOrder.IPurchaseOrderItem {
 
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
     /** 物料编码 */
+    @Column(name = "material_code", length = 100, nullable = false)
     private String materialCode;
 
     /** 采购数量 */
+    @Column(nullable = false, precision = 20, scale = 4)
     private BigDecimal quantity;
 
     /** 单价 */
+    @Column(name = "unit_price", precision = 20, scale = 4)
     private BigDecimal unitPrice;
 
     /** 预计到货日期 */
+    @Column(name = "expected_date")
     private LocalDate expectedDate;
 
     /** 已收数量 */
+    @Column(name = "received_qty", nullable = false, precision = 20, scale = 4)
     private BigDecimal receivedQty;
 
     /**

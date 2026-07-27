@@ -3,8 +3,10 @@ package com.byz.factory.iot.model;
 import com.byz.factory.iot.CommandStatus;
 import com.byz.factory.iot.ICommand;
 import com.byz.factory.shared.BaseLifecycleEntity;
+import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -30,19 +32,44 @@ import java.util.Map;
  *
  * @author 苏政
  */
+@Entity
+@Table(name = "iot_command")
 @Data
 @EqualsAndHashCode(callSuper = true)
+@NoArgsConstructor
 public class Command extends BaseLifecycleEntity<CommandStatus> implements ICommand {
 
+    @Column(name = "equipment_code", nullable = false, length = 100)
     private String equipmentCode;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "command_type", nullable = false, length = 20)
     private CommandType commandType;
+
+    @Convert(converter = JsonMapConverter.class)
+    @Column(columnDefinition = "text")
     private Map<String, Object> parameters;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 10)
     private CommandPriority priority;
-    private Duration timeout;
+
+    @Column(name = "timeout_seconds")
+    private Long timeoutSeconds;
+
+    @Column(name = "result_code", length = 50)
     private String resultCode;
+
+    @Column(name = "result_message", length = 500)
     private String resultMessage;
+
+    @Column(name = "sent_at")
     private Instant sentAt;
+
+    @Column(name = "acknowledged_at")
     private Instant acknowledgedAt;
+
+    @Column(name = "completed_at")
     private Instant completedAt;
 
     /**
@@ -58,7 +85,17 @@ public class Command extends BaseLifecycleEntity<CommandStatus> implements IComm
         this.commandType = commandType;
         this.parameters = parameters != null ? parameters : Collections.emptyMap();
         this.priority = CommandPriority.NORMAL;
-        this.timeout = Duration.ofSeconds(30);
+    }
+
+    // ==================== ICommand 接口实现 ====================
+
+    @Override
+    public Duration getTimeout() {
+        return timeoutSeconds != null ? Duration.ofSeconds(timeoutSeconds) : Duration.ofSeconds(30);
+    }
+
+    public void setTimeout(Duration timeout) {
+        this.timeoutSeconds = timeout != null ? timeout.getSeconds() : null;
     }
 
     // ==================== 业务便捷方法 ====================

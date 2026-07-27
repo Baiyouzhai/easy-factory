@@ -1,10 +1,12 @@
 package com.byz.factory.wms.model;
 
+import com.byz.factory.shared.BaseEntity;
 import com.byz.factory.wms.IStorage;
 import com.byz.factory.wms.StorageType;
-import com.byz.factory.shared.BaseEntity;
+import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 
@@ -29,29 +31,40 @@ import java.math.BigDecimal;
  *
  * @author 苏政
  */
+@Entity
+@Table(name = "wms_storage")
 @Data
 @EqualsAndHashCode(callSuper = true)
+@NoArgsConstructor
 public class Storage extends BaseEntity implements IStorage {
 
     /** 仓库 */
+    @Column(nullable = false, length = 100)
     private String warehouse;
 
     /** 区域（原料区/包材区/成品区/待检区/不合格区） */
+    @Column(nullable = false, length = 100)
     private String zone;
 
     /** 货架 */
+    @Column(length = 20)
     private String rack;
 
     /** 层 */
+    @Column(length = 20)
     private String level;
 
     /** 位 */
+    @Column(length = 20)
     private String position;
 
     /** 存储类型 */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
     private StorageType storageType;
 
     /** 容量 */
+    @Column(precision = 20, scale = 4)
     private BigDecimal capacity;
 
     /**

@@ -3,8 +3,16 @@ package com.byz.factory.scm.model;
 import com.byz.factory.scm.IPurchaseOrder;
 import com.byz.factory.scm.PurchaseOrderStatus;
 import com.byz.factory.shared.BaseLifecycleEntity;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -25,27 +33,36 @@ import java.util.List;
  *
  * @author 苏政
  */
+@Entity
+@Table(name = "scm_purchase_order")
 @Data
 @EqualsAndHashCode(callSuper = true)
+@NoArgsConstructor
 public class PurchaseOrder extends BaseLifecycleEntity<PurchaseOrderStatus> implements IPurchaseOrder {
 
     /** 采购单号 */
+    @Column(name = "po_no", length = 100, nullable = false, unique = true)
     private String poNo;
 
     /** 供应商编码 */
+    @Column(name = "supplier_code", length = 100, nullable = false)
     private String supplierCode;
 
     /** 采购明细 */
-    private List<PurchaseOrderItem> items;
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JoinColumn(name = "po_id")
+    private List<PurchaseOrderItem> items = new ArrayList<>();
 
     /** 审批人 */
+    @Column(name = "approved_by", length = 100)
     private String approvedBy;
 
     /** 预计交付日期 */
+    @Column(name = "expected_delivery")
     private LocalDate expectedDelivery;
 
     /**
-     * @param poNo        采购单号
+     * @param poNo         采购单号
      * @param supplierCode 供应商编码
      */
     public PurchaseOrder(String poNo, String supplierCode) {

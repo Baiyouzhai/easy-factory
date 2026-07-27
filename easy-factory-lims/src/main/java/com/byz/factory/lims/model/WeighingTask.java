@@ -6,6 +6,7 @@ import com.byz.factory.event.DomainEventPublisher;
 import com.byz.factory.event.IDomainEvent;
 import com.byz.factory.event.types.LimsEventTypes;
 import com.byz.factory.shared.BaseLifecycleEntity;
+import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -13,44 +14,27 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-/**
- * 称量任务 — 关联工单和配方，记录各物料称量明细。
- * <p>
- * 继承 BaseLifecycleEntity 获得状态机（PENDING→WEIGHING→VERIFIED→COMPLETE），
- * 实现 IWeighingTask 供 MES/IoT/QMS 等模块编译期引用。
- *
- * <h3>IExpand 约定</h3>
- * <pre>
- *   lims.weighing.formulaCode  — 配方编码
- *   lims.weighing.workOrderId  — 工单号
- *   lims.weighing.batchNo      — 批号
- * </pre>
- *
- * @author 苏政
- */
 @Data
 @EqualsAndHashCode(callSuper = true)
+@Entity
+@Table(name = "lims_weighing_task")
 public class WeighingTask extends BaseLifecycleEntity<WeighingTaskStatus> implements IWeighingTask {
 
-    /** 关联配方编码 */
+    @Column(name = "formula_code", nullable = false, length = 100)
     private String formulaCode;
 
-    /** 关联工单号 */
+    @Column(name = "work_order_id", length = 100)
     private String workOrderId;
 
-    /** 批号 */
+    @Column(name = "batch_no", length = 100)
     private String batchNo;
 
-    /** 称量项目列表 */
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+    @JoinColumn(name = "task_id")
     private List<WeighingItem> items;
 
-    /**
-     * @param code        称量任务号
-     * @param name        任务名称
-     * @param formulaCode 配方编码
-     * @param workOrderId 工单号
-     * @param batchNo     批号
-     */
+    public WeighingTask() {}
+
     public WeighingTask(String code, String name, String formulaCode, String workOrderId, String batchNo) {
         super(code, name, WeighingTaskStatus.PENDING);
         this.formulaCode = formulaCode;
@@ -59,86 +43,32 @@ public class WeighingTask extends BaseLifecycleEntity<WeighingTaskStatus> implem
         this.items = new ArrayList<>();
     }
 
-    // ==================== 业务便捷方法（含事件发布） ====================
+    @Override public String getCode() { return super.getCode(); }
+    @Override public String getFormulaCode() { return formulaCode; }
+    @Override public String getWorkOrderId() { return workOrderId; }
+    @Override public String getBatchNo() { return batchNo; }
+    @Override public List<WeighingItem> getItems() { return items; }
+    @Override public WeighingTaskStatus getStatus() { return super.getStatus(); }
 
-    /**
-     * 开始称量（PENDING → WEIGHING）。
-     */
     public void startWeighing() {
-        transition(WeighingTaskStatus.WEIGHING);
-        markUpdated();
-        publishEvent(LimsEventTypes.WEIGHING_TASK_CREATED, Map.of(
-                "taskCode", getCode(),
-                "formulaCode", formulaCode,
-                "workOrderId", workOrderId,
-                "batchNo", batchNo));
+        transition(WeighingTaskStatus.WEIGHING); markUpdated();
+        publish(LimsEventTypes.WEIGHING_TASK_CREATED, Map.of("taskCode", getCode(), "formulaCode", formulaCode, "workOrderId", workOrderId, "batchNo", batchNo));
     }
-
-    /**
-     * 复核通过（WEIGHING → VERIFIED）。
-     */
-    public void verify() {
-        transition(WeighingTaskStatus.VERIFIED);
-        markUpdated();
-    }
-
-    /**
-     * 称量完成（VERIFIED → COMPLETE）。
-     */
+    public void verify() { transition(WeighingTaskStatus.VERIFIED); markUpdated(); }
     public void completeWeighing() {
-        transition(WeighingTaskStatus.COMPLETE);
-        markUpdated();
-        publishEvent(LimsEventTypes.WEIGHING_COMPLETED, Map.of(
-                "taskCode", getCode(),
-                "formulaCode", formulaCode,
-                "workOrderId", workOrderId,
-                "batchNo", batchNo,
-                "itemCount", items != null ? items.size() : 0));
+        transition(WeighingTaskStatus.COMPLETE); markUpdated();
+        publish(LimsEventTypes.WEIGHING_COMPLETED, Map.of("taskCode", getCode(), "formulaCode", formulaCode, "workOrderId", workOrderId, "batchNo", batchNo, "itemCount", items != null ? items.size() : 0));
     }
 
-    /**
-     * 添加称量项目。
-     *
-     * @param item 称量项目
-     */
-    public void addItem(WeighingItem item) {
-        if (this.items == null) {
-            this.items = new ArrayList<>();
-        }
-        this.items.add(item);
-        markUpdated();
-    }
+    public void addItem(WeighingItem item) { if (items == null) items = new ArrayList<>(); items.add(item); markUpdated(); }
 
-    // ==================== 查询方法 ====================
+    public boolean isAllItemsWeighed() { return items != null && items.stream().allMatch(i -> i.getActualQty() != null); }
 
-    /**
-     * 检查是否所有项目均已完成称量。
-     */
-    public boolean isAllItemsWeighed() {
-        return items != null && items.stream().allMatch(i -> i.getActualQty() != null);
-    }
-
-    /**
-     * 获取存在偏差的项目列表。
-     */
     public List<WeighingItem> getDeviatedItems() {
         if (items == null) return List.of();
-        return items.stream()
-                .filter(i -> i.getActualQty() != null && i.getTolerance() != null)
-                .filter(i -> {
-                    var deviation = i.getActualQty().subtract(i.getFormulaQty()).abs()
-                            .divide(i.getFormulaQty(), 4, java.math.RoundingMode.HALF_UP)
-                            .multiply(java.math.BigDecimal.valueOf(100));
-                    return deviation.compareTo(i.getTolerance()) > 0;
-                })
-                .toList();
+        return items.stream().filter(i -> i.getActualQty() != null && i.getTolerance() != null)
+                .filter(i -> { var d = i.getActualQty().subtract(i.getFormulaQty()).abs().divide(i.getFormulaQty(), 4, java.math.RoundingMode.HALF_UP).multiply(java.math.BigDecimal.valueOf(100)); return d.compareTo(i.getTolerance()) > 0; }).toList();
     }
 
-    // ==================== 内部 ====================
-
-    private void publishEvent(String eventType, Object payload) {
-        IDomainEvent event = IDomainEvent.of(eventType, "lims", payload);
-        DomainEventPublisher.publish(event);
-    }
-
+    private void publish(String eventType, Object payload) { DomainEventPublisher.publish(IDomainEvent.of(eventType, "lims", payload)); }
 }

@@ -2,6 +2,7 @@ package com.byz.factory.equip.model;
 
 import com.byz.factory.equip.IEquipmentRecipe;
 import com.byz.factory.shared.BaseEntity;
+import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -28,18 +29,25 @@ import java.util.List;
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
+@Entity
+@Table(name = "equip_recipe")
 public class EquipmentRecipe extends BaseEntity implements IEquipmentRecipe {
 
     /** 适用设备编码 */
+    @Column(nullable = false, length = 100)
     private String equipmentCode;
 
     /** 适用产品编码 */
+    @Column(length = 100)
     private String productCode;
 
     /** 配方版本（如 "1.0.0"） */
+    @Column(nullable = false, length = 20)
     private String version;
 
     /** 配方参数阶段列表 */
+    @ElementCollection
+    @CollectionTable(name = "equip_recipe_phase", joinColumns = @JoinColumn(name = "recipe_id"))
     private List<RecipePhase> phases = new ArrayList<>();
 
     public EquipmentRecipe() {
@@ -87,21 +95,26 @@ public class EquipmentRecipe extends BaseEntity implements IEquipmentRecipe {
      * 示例：反应釜配方中，温度参数在"升温段"设定 120°C、持续 600 秒、升温速率 2°C/min。
      */
     @Data
+    @Embeddable
     public static class RecipePhase implements IEquipmentRecipe.IRecipePhase {
 
         /** 参数编码 */
+        @Column(length = 50)
         private String paramCode;
 
         /** 阶段名称（如：升温段、恒温段、降温段） */
+        @Column(length = 50)
         private String phase;
 
         /** 设定值 */
+        @Column(precision = 20, scale = 6)
         private BigDecimal setValue;
 
         /** 持续时间（秒） */
         private int duration;
 
         /** 变化速率（单位/秒） */
+        @Column(precision = 10, scale = 4)
         private BigDecimal rampRate;
 
         public RecipePhase() {

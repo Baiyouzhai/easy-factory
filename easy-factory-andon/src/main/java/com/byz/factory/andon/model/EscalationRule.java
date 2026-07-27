@@ -1,6 +1,7 @@
 package com.byz.factory.andon.model;
 
 import com.byz.factory.shared.BaseEntity;
+import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -13,19 +14,9 @@ import java.util.List;
  * 每条规则针对一种触发类型 × 严重程度的组合，配置多级上报链。
  * 超过指定超时时间无人响应时，自动升级到下一级别。
  * 上报规则为静态配置（数据库表），非脚本化（design-decisions.md §3.4）。
- * <p>
- * 示例上报链：
- * <pre>
- * Level 1 (0min):  操作工 → 班组长
- * Level 2 (5min):  班组长未响应 → 车间主任 + 设备工程师
- * Level 3 (15min): 车间主任未响应 → 生产经理 + 值班厂长
- * Level 4 (30min): 生产线自动暂停
- * </pre>
  *
  * <h3>IExpand 约定</h3>
  * <pre>
- *   andon.rule.autoStop      — 自动停止策略（NONE/PAUSE_PROCESS/STOP_LINE/STOP_FACTORY）
- *   andon.rule.enabled        — 是否启用
  *   andon.rule.createdBy      — 创建人
  * </pre>
  *
@@ -33,22 +24,37 @@ import java.util.List;
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
+@Entity
+@Table(name = "andon_escalation_rule")
 public class EscalationRule extends BaseEntity {
 
     /** 触发类型 */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "trigger_type", nullable = false, length = 30)
     private TriggerType triggerType;
 
     /** 严重程度 */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 15)
     private AndonSeverity severity;
 
     /** 自动停止策略 */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "auto_stop", nullable = false, length = 20)
     private AutoStop autoStop;
 
     /** 是否启用 */
+    @Column(nullable = false)
     private boolean enabled;
 
-    /** 逐级上报链 */
+    /** 逐级上报链（暂存内存，不做 JPA 级联持久化） */
+    @Transient
     private List<EscalationLevel> levels;
+
+    /** JPA 要求无参构造 */
+    public EscalationRule() {
+        super();
+    }
 
     /**
      * @param code        规则编码
@@ -66,11 +72,7 @@ public class EscalationRule extends BaseEntity {
 
     // ==================== 业务方法 ====================
 
-    /**
-     * 添加上报级别。
-     *
-     * @param level 上报级别
-     */
+    /** 添加上报级别。 */
     public void addLevel(EscalationLevel level) {
         if (this.levels == null) {
             this.levels = new ArrayList<>();
@@ -79,12 +81,7 @@ public class EscalationRule extends BaseEntity {
         markUpdated();
     }
 
-    /**
-     * 按级别序号获取上报级别。
-     *
-     * @param level 级别序号（1-based）
-     * @return 上报级别，不存在返回 null
-     */
+    /** 按级别序号获取上报级别（1-based），不存在返回 null。 */
     public EscalationLevel getLevel(int level) {
         if (levels == null) return null;
         return levels.stream()
@@ -93,32 +90,24 @@ public class EscalationRule extends BaseEntity {
                 .orElse(null);
     }
 
-    /**
-     * 获取最大上报级别数。
-     */
+    /** 获取最大上报级别数。 */
     public int getMaxLevel() {
         return levels != null ? levels.size() : 0;
     }
 
-    /**
-     * 启用规则。
-     */
+    /** 启用规则。 */
     public void enable() {
         this.enabled = true;
         markUpdated();
     }
 
-    /**
-     * 禁用规则。
-     */
+    /** 禁用规则。 */
     public void disable() {
         this.enabled = false;
         markUpdated();
     }
 
-    /**
-     * 设置自动停止策略。
-     */
+    /** 设置自动停止策略。 */
     public void setAutoStopPolicy(AutoStop autoStop) {
         this.autoStop = autoStop;
         markUpdated();
@@ -138,7 +127,7 @@ public class EscalationRule extends BaseEntity {
         /** 超时时间（分钟），0 表示立即通知 */
         private int timeoutMinutes;
 
-        /** 通知角色列表（如：班组长、车间主任、设备工程师） */
+        /** 通知角色列表 */
         private List<String> notifyRoles;
 
         /** 上报条件 */
@@ -155,9 +144,7 @@ public class EscalationRule extends BaseEntity {
             this.notifyRoles = new ArrayList<>();
         }
 
-        /**
-         * 添加通知角色。
-         */
+        /** 添加通知角色。 */
         public void addNotifyRole(String role) {
             if (this.notifyRoles == null) {
                 this.notifyRoles = new ArrayList<>();
@@ -169,32 +156,14 @@ public class EscalationRule extends BaseEntity {
 
     // ==================== 值枚举 ====================
 
-    /**
-     * 自动停止策略 — 上报到指定级别后自动执行的产线操作。
-     */
+    /** 自动停止策略。 */
     public enum AutoStop {
-
-        /** 不自动停止 */
-        NONE,
-        /** 暂停当前工序 */
-        PAUSE_PROCESS,
-        /** 停止整条产线 */
-        STOP_LINE,
-        /** 停止整个工厂 */
-        STOP_FACTORY;
-
+        NONE, PAUSE_PROCESS, STOP_LINE, STOP_FACTORY;
     }
 
-    /**
-     * 上报条件。
-     */
+    /** 上报条件。 */
     public enum EscalateCondition {
-
-        /** 超时未响应（指定时间内未确认） */
-        TIMEOUT,
-        /** 无人响应（无人确认） */
-        NO_RESPONSE;
-
+        TIMEOUT, NO_RESPONSE;
     }
 
 }

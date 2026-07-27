@@ -2,8 +2,10 @@ package com.byz.factory.iot.model;
 
 import com.byz.factory.iot.IDeviceConnection;
 import com.byz.factory.shared.BaseEntity;
+import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -24,16 +26,26 @@ import java.time.Instant;
  *
  * @author 苏政
  */
+@Entity
+@Table(name = "iot_device_connection")
 @Data
 @EqualsAndHashCode(callSuper = true)
+@NoArgsConstructor
 public class DeviceConnection extends BaseEntity implements IDeviceConnection {
 
+    @Column(nullable = false, length = 50)
     private String protocol;
+
+    @Column(nullable = false, length = 500)
     private String endpoint;
+
+    @Column(name = "poll_interval_ms")
     private int pollIntervalMs;
+
+    @Column(name = "last_connected")
     private Instant lastConnected;
 
-    /** 认证配置（证书路径 / 用户名密码 / Token） */
+    @Column(name = "auth_config", length = 500)
     private String authConfig;
 
     /**

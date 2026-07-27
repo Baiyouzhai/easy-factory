@@ -2,6 +2,7 @@ package com.byz.factory.equip.model;
 
 import com.byz.factory.equip.IEquipmentParameter;
 import com.byz.factory.shared.BaseEntity;
+import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -25,33 +26,44 @@ import java.math.BigDecimal;
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
+@Entity
+@Table(name = "equip_parameter")
 public class EquipmentParameter extends BaseEntity implements IEquipmentParameter {
 
     /** 关联设备编码 */
+    @Column(nullable = false, length = 100)
     private String equipmentCode;
 
     /** 参数编码 */
+    @Column(nullable = false, length = 50)
     private String paramCode;
 
     /** 参数名称（如：转速、温度、压力、流量） */
+    @Column(nullable = false, length = 100)
     private String paramName;
 
     /** 设定值 */
+    @Column(precision = 20, scale = 6)
     private BigDecimal setValue;
 
     /** 实际值（从 IoT 采集） */
+    @Column(precision = 20, scale = 6)
     private BigDecimal actualValue;
 
     /** 控制上限 */
+    @Column(precision = 20, scale = 6)
     private BigDecimal upperLimit;
 
     /** 控制下限 */
+    @Column(precision = 20, scale = 6)
     private BigDecimal lowerLimit;
 
     /** 单位 */
+    @Column(length = 20)
     private String unit;
 
     /** 控制方式（PLC自动 / 人工调节） */
+    @Column(length = 20)
     private String controlMethod;
 
     public EquipmentParameter() {

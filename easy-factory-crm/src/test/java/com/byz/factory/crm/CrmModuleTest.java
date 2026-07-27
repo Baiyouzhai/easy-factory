@@ -81,7 +81,7 @@ class CrmModuleTest {
     @Test
     @DisplayName("SalesOrderItem 创建 — 字段正确初始化")
     void salesOrderItem_creation_shouldSetFields() {
-        SalesOrderItem item = new SalesOrderItem("PROD-001", new BigDecimal("100"), new BigDecimal("25.50"));
+        SalesOrderItem item = new SalesOrderItem(null, "PROD-001", new BigDecimal("100"), new BigDecimal("25.50"));
 
         assertEquals("PROD-001", item.getProductCode());
         assertEquals(new BigDecimal("100"), item.getQuantity());
@@ -91,7 +91,7 @@ class CrmModuleTest {
     @Test
     @DisplayName("SalesOrderItem — 实现 ISalesOrder.ISalesOrderItem 接口")
     void salesOrderItem_shouldImplementNestedInterface() {
-        SalesOrderItem item = new SalesOrderItem("PROD-001", BigDecimal.ONE, BigDecimal.TEN);
+        SalesOrderItem item = new SalesOrderItem(null, "PROD-001", BigDecimal.ONE, BigDecimal.TEN);
 
         assertInstanceOf(ISalesOrder.ISalesOrderItem.class, item);
     }

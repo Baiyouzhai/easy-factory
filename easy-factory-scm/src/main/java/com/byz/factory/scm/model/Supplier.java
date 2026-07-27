@@ -3,8 +3,14 @@ package com.byz.factory.scm.model;
 import com.byz.factory.scm.ISupplier;
 import com.byz.factory.scm.SupplierStatus;
 import com.byz.factory.shared.BaseEntity;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Table;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
 /**
  * 供应商 — 继承 BaseEntity 获得 code/name/audit，实现 ISupplier 供跨模块引用。
@@ -36,26 +42,36 @@ import lombok.EqualsAndHashCode;
  *
  * @author 苏政
  */
+@Entity
+@Table(name = "scm_supplier")
 @Data
 @EqualsAndHashCode(callSuper = true)
+@NoArgsConstructor
 public class Supplier extends BaseEntity implements ISupplier {
 
     /** 类别 (RAW_MATERIAL / PACKAGING / EQUIPMENT / SERVICE) */
+    @Column(length = 50)
     private String category;
 
     /** 资质状态 (QUALIFIED / UNDER_REVIEW / DISQUALIFIED) */
+    @Column(length = 30, nullable = false)
     private String qualification;
 
     /** 运营状态 */
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20, nullable = false)
     private SupplierStatus status;
 
     /** 平均交货周期（天） */
+    @Column(name = "lead_time_days")
     private int leadTimeDays;
 
     /** 准时交货率（%） */
+    @Column(name = "on_time_rate")
     private double onTimeRate;
 
     /** 一次合格率（%） */
+    @Column(name = "quality_rate")
     private double qualityRate;
 
     public Supplier(String code, String name, String category) {

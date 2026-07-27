@@ -2,8 +2,10 @@ package com.byz.factory.iot.model;
 
 import com.byz.factory.iot.IAlarmEvent;
 import com.byz.factory.shared.BaseEntity;
+import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -28,20 +30,46 @@ import java.util.List;
  *
  * @author 苏政
  */
+@Entity
+@Table(name = "iot_alarm_event")
 @Data
 @EqualsAndHashCode(callSuper = true)
+@NoArgsConstructor
 public class AlarmEvent extends BaseEntity implements IAlarmEvent {
 
+    @Column(name = "equipment_code", nullable = false, length = 100)
     private String equipmentCode;
+
+    @Column(name = "alarm_code", nullable = false, length = 100)
     private String alarmCode;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
     private AlarmSeverity severity;
+
+    @Column(length = 500)
     private String message;
+
+    @Column(name = "trigger_value", precision = 20, scale = 6)
     private BigDecimal triggerValue;
+
+    @Column(precision = 20, scale = 6)
     private BigDecimal threshold;
+
+    @Column(name = "triggered_at")
     private Instant triggeredAt;
+
+    @Column(name = "acknowledged_by", length = 100)
     private String acknowledgedBy;
+
+    @Column(name = "acknowledged_at")
     private Instant acknowledgedAt;
+
+    @Column(name = "resolved_at")
     private Instant resolvedAt;
+
+    @Convert(converter = JsonListConverter.class)
+    @Column(columnDefinition = "text")
     private List<String> actions;
 
     /**
@@ -89,12 +117,18 @@ public class AlarmEvent extends BaseEntity implements IAlarmEvent {
 
     /** 添加联动动作 */
     public void addAction(String action) {
+        if (this.actions == null) {
+            this.actions = new ArrayList<>();
+        }
         this.actions.add(action);
         markUpdated();
     }
 
     /** 获取联动动作列表（不可修改） */
     public List<String> getActions() {
+        if (actions == null) {
+            return Collections.emptyList();
+        }
         return Collections.unmodifiableList(actions);
     }
 

@@ -3,8 +3,16 @@ package com.byz.factory.crm.model;
 import com.byz.factory.crm.ISalesOrder;
 import com.byz.factory.crm.SalesOrderStatus;
 import com.byz.factory.shared.BaseLifecycleEntity;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -35,45 +43,61 @@ import java.util.List;
  *
  * @author 苏政
  */
+@Entity
+@Table(name = "crm_sales_order")
 @Data
 @EqualsAndHashCode(callSuper = true)
+@NoArgsConstructor
 public class SalesOrder extends BaseLifecycleEntity<SalesOrderStatus> implements ISalesOrder {
 
     /** 订单号 */
+    @Column(name = "order_no", length = 100, nullable = false, unique = true)
     private String orderNo;
 
     /** 客户编码 */
+    @Column(name = "customer_code", length = 100, nullable = false)
     private String customerCode;
 
     /** 产品编码 */
+    @Column(name = "product_code", length = 100)
     private String productCode;
 
     /** 订单数量 */
+    @Column(nullable = false, precision = 20, scale = 4)
     private BigDecimal quantity;
 
     /** 单价 */
+    @Column(name = "unit_price", precision = 20, scale = 4)
     private BigDecimal unitPrice;
 
     /** 客户要求交期 */
+    @Column(name = "required_date")
     private Instant requiredDate;
 
     /** 承诺交期 */
+    @Column(name = "committed_date")
     private Instant committedDate;
 
     /** 优先级 (NORMAL / RUSH / EXPRESS) */
+    @Column(length = 20, nullable = false)
     private String priority;
 
     /** GxP 合规要求 */
+    @Column(name = "gxp_requirements", columnDefinition = "TEXT")
     private String gxpRequirements;
 
     /** 特殊说明 */
+    @Column(name = "special_instructions", columnDefinition = "TEXT")
     private String specialInstructions;
 
     /** 关联生产计划号 */
+    @Column(name = "plan_no", length = 100)
     private String planNo;
 
     /** 订单明细 */
-    private List<SalesOrderItem> items;
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JoinColumn(name = "order_id")
+    private List<SalesOrderItem> items = new ArrayList<>();
 
     /**
      * @param orderNo      订单号
@@ -139,7 +163,7 @@ public class SalesOrder extends BaseLifecycleEntity<SalesOrderStatus> implements
      * @return 创建的明细行
      */
     public SalesOrderItem addItem(String productCode, BigDecimal quantity, BigDecimal unitPrice) {
-        SalesOrderItem item = new SalesOrderItem(productCode, quantity, unitPrice);
+        SalesOrderItem item = new SalesOrderItem(null, productCode, quantity, unitPrice);
         this.items.add(item);
         markUpdated();
         return item;

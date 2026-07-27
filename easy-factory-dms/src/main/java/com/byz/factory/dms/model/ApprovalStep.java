@@ -1,35 +1,58 @@
 package com.byz.factory.dms.model;
 
-import lombok.AllArgsConstructor;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.Instant;
 
 /**
- * 审批步骤 — 审批流中的单个审批节点。
+ * 审批步骤 — 审批流中的单个审批节点（JPA 实体）。
  * <p>
- * 记录审批角色、审批人、决定和意见。
- * 每个步骤按 stepNo 顺序依次执行。
+ * 每个步骤按 stepNo 顺序依次执行，记录审批角色、审批人、决定和意见。
  *
  * @author 苏政
  */
+@Entity
+@Table(name = "dms_approval_step")
 @Data
-@AllArgsConstructor
+@NoArgsConstructor
 public class ApprovalStep {
 
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    /** 关联审批流 ID */
+    @Column(name = "workflow_id", nullable = false)
+    private Long workflowId;
+
     /** 步骤序号 */
+    @Column(name = "step_no", nullable = false)
     private int stepNo;
 
     /** 审批角色 */
+    @Column(name = "approver_role", nullable = false, length = 100)
     private String approverRole;
 
     /** 审批人 */
+    @Column(length = 100)
     private String approver;
 
     /** 审批决定 */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
     private ApprovalDecision decision;
 
     /** 审批意见 */
+    @Column(length = 500)
     private String comment;
 
     /** 审批时间 */
@@ -37,9 +60,6 @@ public class ApprovalStep {
 
     /**
      * 创建待审批步骤。
-     *
-     * @param stepNo       步骤序号
-     * @param approverRole 审批角色
      */
     public ApprovalStep(int stepNo, String approverRole) {
         this.stepNo = stepNo;
@@ -49,10 +69,6 @@ public class ApprovalStep {
 
     /**
      * 执行此步骤的审批。
-     *
-     * @param approver  审批人
-     * @param decision  审批决定
-     * @param comment   审批意见
      */
     public void execute(String approver, ApprovalDecision decision, String comment) {
         this.approver = approver;
@@ -65,13 +81,9 @@ public class ApprovalStep {
      * 审批决定枚举。
      */
     public enum ApprovalDecision {
-        /** 待审批 */
         PENDING,
-        /** 已批准 */
         APPROVED,
-        /** 已拒绝 */
         REJECTED,
-        /** 需要修订 */
         NEEDS_REVISION
     }
 

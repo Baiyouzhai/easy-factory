@@ -106,14 +106,15 @@ EAM → ERP:    设备折旧 → 财务成本归集
 
 ## 遗留问题
 
-### 当前实现（2026-07-19 更新）
-- [x] `Asset` — 实现 `IAsset`，`BaseLifecycleEntity<AssetStatus>`，含 `IDLE→IN_USE→UNDER_MAINTENANCE→SCRAPPED`
-- [x] `MaintenanceOrder` — 实现 `IMaintenanceOrder`，`BaseLifecycleEntity<MaintenanceOrderStatus>`，含 `OPEN→IN_PROGRESS→COMPLETED→VERIFIED`
-- [x] `CalibrationRecord` — 实现 `ICalibrationRecord`，`BaseEntity`，含校准类型/标准/结果/证书
-- [x] `EamService` — 接口已定义（资产管理 + 维护工单 + 校准记录，10 方法）
-- [x] `AssetStatus` / `MaintenanceOrderStatus` / `MaintenanceType` / `MaintenancePriority` / `CalibrationResult` / `CalibrationType` — 枚举（core `batch/`）
-- [x] `IAsset` / `IMaintenanceOrder` / `ICalibrationRecord` — 跨模块接口（core `batch/`）
-- [x] 单元测试 — `EamModuleTest`（8 个测试）
+### 当前实现（2026-07-25 更新）
+- [x] `Asset` — 实现 `IAsset`，`BaseLifecycleEntity<AssetStatus>`，含 5 个业务方法(startUse/stopUse/startMaintenance/completeMaintenance/scrap) + IExpand 文档
+- [x] `MaintenanceOrder` — 实现 `IMaintenanceOrder`，`BaseLifecycleEntity<MaintenanceOrderStatus>`，含 4 个业务方法(startWork/completeWork/verifyWork/cancel，自动记录时间/成本/维修人) + IExpand
+- [x] `CalibrationRecord` — 实现 `ICalibrationRecord`，`BaseEntity`，含 3 个便捷方法(recordPass/recordFail/recordAdjusted) + IExpand
+- [x] `EamService` — 接口已定义（18 方法：资产查询+生命周期 + 维护工单+查询 + 校准+查询+到期预警）
+- [x] `AssetStatus` / `MaintenanceOrderStatus` / `MaintenanceType` / `MaintenancePriority` / `CalibrationResult` / `CalibrationType` — 枚举（core `eam/`）
+- [x] `IAsset` / `IMaintenanceOrder` / `ICalibrationRecord` — 跨模块接口（core `eam/`）
+- [x] `EamEventTypes` — 6 个领域事件常量（core `event/types/`），供 Andon/DMS/MES/ERP 订阅
+- [x] 单元测试 — `EamModuleTest`（29 个测试）
 - [ ] 维护计划自动生成 + 备件管理
 - [ ] EamService 实现类
 
@@ -121,12 +122,13 @@ EAM → ERP:    设备折旧 → 财务成本归集
 
 | 接口 | 位置 | 说明 |
 |------|------|------|
-| `IAsset` | core `batch/` | 固定资产编码/设备关联/折旧 |
-| `IMaintenanceOrder` | core `batch/` | 维护类型/优先级/停机时间/成本 |
-| `ICalibrationRecord` | core `batch/` | 校准类型/标准/结果/证书 |
-| `AssetStatus` | core `batch/` | IDLE/IN_USE/UNDER_MAINTENANCE/SCRAPPED |
-| `MaintenanceOrderStatus` | core `batch/` | OPEN→IN_PROGRESS→COMPLETED→VERIFIED (+CANCELLED) |
-| `MaintenanceType` | core `batch/` | PREVENTIVE/CORRECTIVE/PREDICTIVE/CALIBRATION |
+| `IAsset` | core `eam/` | 固定资产编码/设备关联/折旧 |
+| `IMaintenanceOrder` | core `eam/` | 维护类型/优先级/停机时间/成本 |
+| `ICalibrationRecord` | core `eam/` | 校准类型/标准/结果/证书 |
+| `AssetStatus` | core `eam/` | IDLE/IN_USE/UNDER_MAINTENANCE/SCRAPPED |
+| `MaintenanceOrderStatus` | core `eam/` | OPEN→IN_PROGRESS→COMPLETED→VERIFIED (+CANCELLED) |
+| `MaintenanceType` | core `eam/` | PREVENTIVE/CORRECTIVE/PREDICTIVE/CALIBRATION |
+| `EamEventTypes` | core `event/types/` | 6 个事件常量：asset.scrapped / maintenance.* / calibration.recorded |
 
 ### 制造标准背景
 

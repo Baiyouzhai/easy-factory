@@ -50,6 +50,13 @@
             <version>${nashorn.version}</version>
         </dependency>
 
+        <!-- Spring Data JPA 注解（@MappedSuperclass 等基础标注） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>

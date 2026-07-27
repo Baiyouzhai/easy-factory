@@ -9,6 +9,67 @@ spring:
     time-zone: Asia/Shanghai
     default-property-inclusion: non_null
 
+  # === 数据源（主）: PostgreSQL 16 ===
+  datasource:
+    url: jdbc:postgresql://121.196.236.116:5432/easy_factory
+    username: postgres
+    password: Pg@2024!Secure
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      idle-timeout: 30000
+      connection-timeout: 10000
+
+  # === 数据源（开发/测试）: H2 内存库 ===
+  # 启动时用 profile: dev 或 test 则自动切换到 H2
+  # 激活方式: --spring.profiles.active=dev
+
+  # === JPA ===
+  jpa:
+    database: postgresql
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: validate    # 生产用 validate（校验实体与表匹配，不做自动建表）
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc.batch_size: 20
+
+---
+# === dev 环境: H2 内存库 ===
+spring:
+  config:
+    activate:
+      on-profile: dev
+  datasource:
+    url: jdbc:h2:mem:easy_factory_dev;DB_CLOSE_DELAY=-1;MODE=PostgreSQL
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop   # 开发模式自动建表
+    show-sql: true
+
+---
+# === test 环境: H2 内存库 ===
+spring:
+  config:
+    activate:
+      on-profile: test
+  datasource:
+    url: jdbc:h2:mem:easy_factory_test;DB_CLOSE_DELAY=-1;MODE=PostgreSQL
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+
 # SpringDoc OpenAPI 配置
 springdoc:
   api-docs:

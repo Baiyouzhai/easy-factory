@@ -6,6 +6,7 @@ import com.byz.factory.event.DomainEventPublisher;
 import com.byz.factory.event.IDomainEvent;
 import com.byz.factory.event.types.MpsEventTypes;
 import com.byz.factory.shared.BaseLifecycleEntity;
+import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -36,25 +37,37 @@ import java.util.*;
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
+@Entity
+@Table(name = "mps_production_plan")
 public class ProductionPlan extends BaseLifecycleEntity<ProductionPlanStatus> implements IProductionPlan {
 
     /** 计划编号 */
+    @Column(name = "plan_no", nullable = false, unique = true, length = 100)
     private String planNo;
 
     /** 周期类型 (WEEKLY / MONTHLY / QUARTERLY) */
+    @Column(name = "period_type", nullable = false, length = 20)
     private String periodType;
 
     /** 周期起始日期 */
+    @Column(name = "period_start", nullable = false)
     private LocalDate periodStart;
 
     /** 周期结束日期 */
+    @Column(name = "period_end", nullable = false)
     private LocalDate periodEnd;
 
     /** 审批人 */
+    @Column(name = "approved_by", length = 100)
     private String approvedBy;
 
     /** 计划明细列表 */
+    @ElementCollection
+    @CollectionTable(name = "mps_plan_item", joinColumns = @JoinColumn(name = "plan_id"))
     private List<PlanItem> items;
+
+    /** JPA 无参构造 */
+    protected ProductionPlan() {}
 
     /**
      * @param planNo      计划编号
@@ -225,26 +238,35 @@ public class ProductionPlan extends BaseLifecycleEntity<ProductionPlanStatus> im
      * <p>
      * 实现 {@link IProductionPlan.IPlanItem} 供 MES/APS 等消费模块编译期引用。
      */
+    @Embeddable
     @Data
     public static class PlanItem implements IPlanItem {
 
         /** 产品编码 */
+        @Column(name = "product_code", nullable = false, length = 100)
         private String productCode;
 
         /** 产品名称 */
+        @Column(name = "product_name", nullable = false, length = 255)
         private String productName;
 
         /** 计划数量 */
+        @Column(nullable = false, precision = 20, scale = 6)
         private BigDecimal quantity;
 
         /** 交付日期 */
+        @Column(name = "due_date", nullable = false)
         private LocalDate dueDate;
 
         /** 优先级（1=最高） */
+        @Column(nullable = false)
         private int priority;
 
         /** 执行工厂编码 */
+        @Column(name = "factory_code", nullable = false, length = 50)
         private String factoryCode;
+
+        protected PlanItem() {}
 
         public PlanItem(String productCode, String productName, BigDecimal quantity,
                         LocalDate dueDate, int priority, String factoryCode) {

@@ -4,6 +4,7 @@ import com.byz.factory.equip.IEquipment;
 import com.byz.factory.equip.MachineStatus;
 import com.byz.factory.shared.AbstractResourceItem;
 import com.byz.factory.shared.Dict;
+import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -51,20 +52,33 @@ import java.time.LocalDate;
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
+@Entity
+@Table(name = "equip_equipment")
 public class Equipment extends AbstractResourceItem implements IEquipment {
 
     /** 设备运行状态（由 MachineStatus 状态机校验） */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
     private MachineStatus status = MachineStatus.IDLE;
 
+    @Column(length = 100)
     private String model;
+
+    @Column(length = 50)
     private String category;
+
+    @Column(length = 100)
     private String location;
+
+    @Column(length = 50)
     private String assetCode;
 
     /** 规格参数 */
+    @Column(length = 500)
     private String specifications;
 
     /** 供应商 */
+    @Column(length = 100)
     private String supplier;
 
     /** 购置日期 */

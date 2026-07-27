@@ -6,6 +6,7 @@ import com.byz.factory.event.DomainEventPublisher;
 import com.byz.factory.event.IDomainEvent;
 import com.byz.factory.event.types.LimsEventTypes;
 import com.byz.factory.shared.BaseLifecycleEntity;
+import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -15,73 +16,61 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-/**
- * 批记录 — GMP 合规核心文档，记录一批产品从投料到产出的完整制造过程。
- * <p>
- * 继承 BaseLifecycleEntity 获得状态机（IN_PROGRESS→REVIEW→APPROVED→ARCHIVED），
- * 实现 IBatchRecord 供 MES/QMS/DMS 等模块编译期引用。
- *
- * <h3>IExpand 约定</h3>
- * <pre>
- *   lims.batch.batchNo          — 批号
- *   lims.batch.workOrderId      — 工单号
- *   lims.batch.formulaVersion   — 配方版本
- *   lims.batch.yield            — 实际收率
- *   lims.batch.reviewedBy       — 审核人
- * </pre>
- *
- * @author 苏政
- */
 @Data
 @EqualsAndHashCode(callSuper = true)
+@Entity
+@Table(name = "lims_batch_record")
 public class BatchRecord extends BaseLifecycleEntity<BatchRecordStatus> implements IBatchRecord {
 
-    /** 批号 */
+    @Column(name = "batch_no", nullable = false, unique = true, length = 100)
     private String batchNo;
 
-    /** 关联工单号 */
+    @Column(name = "work_order_id", length = 100)
     private String workOrderId;
 
-    /** 配方编码 */
+    @Column(name = "formula_code", length = 100)
     private String formulaCode;
 
-    /** 配方版本（冻结——批记录关联的配方版本不可变） */
+    @Column(name = "formula_version", length = 20)
     private String formulaVersion;
 
-    /** 产品编码 */
+    @Column(name = "product_code", length = 100)
     private String productCode;
 
-    /** 实际批量 */
+    @Column(name = "batch_size", precision = 20, scale = 6)
     private BigDecimal batchSize;
 
-    /** 实际收率 */
+    @Column(precision = 10, scale = 4)
     private BigDecimal yield;
 
-    /** 工序执行记录（引用键列表） */
-    private List<String> processRecords;
+    @ElementCollection
+    @CollectionTable(name = "lims_batch_process_record", joinColumns = @JoinColumn(name = "batch_id"))
+    @Column(name = "record_ref")
+    private List<String> processRecords = new ArrayList<>();
 
-    /** 关联称量任务号列表 */
-    private List<String> weighingTasks;
+    @ElementCollection
+    @CollectionTable(name = "lims_batch_weighing_task", joinColumns = @JoinColumn(name = "batch_id"))
+    @Column(name = "task_code")
+    private List<String> weighingTasks = new ArrayList<>();
 
-    /** 关联检验记录列表 */
-    private List<String> inspectionRecords;
+    @ElementCollection
+    @CollectionTable(name = "lims_batch_inspection", joinColumns = @JoinColumn(name = "batch_id"))
+    @Column(name = "inspection_ref")
+    private List<String> inspectionRecords = new ArrayList<>();
 
-    /** 偏差记录列表 */
-    private List<String> deviations;
+    @ElementCollection
+    @CollectionTable(name = "lims_batch_deviation", joinColumns = @JoinColumn(name = "batch_id"))
+    @Column(name = "deviation_ref")
+    private List<String> deviations = new ArrayList<>();
 
-    /** 审核人 */
+    @Column(name = "reviewed_by", length = 100)
     private String reviewedBy;
 
-    /** 审核时间 */
+    @Column(name = "reviewed_at")
     private Instant reviewedAt;
 
-    /**
-     * @param batchNo        批号
-     * @param workOrderId    工单号
-     * @param formulaCode    配方编码
-     * @param formulaVersion 配方版本
-     * @param productCode    产品编码
-     */
+    public BatchRecord() {}
+
     public BatchRecord(String batchNo, String workOrderId, String formulaCode,
                        String formulaVersion, String productCode) {
         super(batchNo, "Batch-" + batchNo, BatchRecordStatus.IN_PROGRESS);
@@ -90,126 +79,44 @@ public class BatchRecord extends BaseLifecycleEntity<BatchRecordStatus> implemen
         this.formulaCode = formulaCode;
         this.formulaVersion = formulaVersion;
         this.productCode = productCode;
-        this.processRecords = new ArrayList<>();
-        this.weighingTasks = new ArrayList<>();
-        this.inspectionRecords = new ArrayList<>();
-        this.deviations = new ArrayList<>();
     }
 
-    // ==================== 业务便捷方法（含事件发布） ====================
+    @Override public String getCode() { return super.getCode(); }
+    @Override public String getName() { return super.getName(); }
+    @Override public String getBatchNo() { return batchNo; }
+    @Override public String getWorkOrderId() { return workOrderId; }
+    @Override public String getFormulaCode() { return formulaCode; }
+    @Override public String getFormulaVersion() { return formulaVersion; }
+    @Override public String getProductCode() { return productCode; }
+    @Override public BigDecimal getBatchSize() { return batchSize; }
+    @Override public BigDecimal getYield() { return yield; }
+    @Override public BatchRecordStatus getStatus() { return super.getStatus(); }
+    @Override public String getReviewedBy() { return reviewedBy; }
+    @Override public Instant getReviewedAt() { return reviewedAt; }
+    @Override public List<String> getProcessRecords() { return processRecords; }
+    @Override public List<String> getWeighingTasks() { return weighingTasks; }
+    @Override public List<String> getInspectionRecords() { return inspectionRecords; }
+    @Override public List<String> getDeviations() { return deviations; }
 
-    /**
-     * 提交审核（IN_PROGRESS → REVIEW）。
-     */
     public void submitForReview() {
-        transition(BatchRecordStatus.REVIEW);
-        markUpdated();
-        publishEvent(LimsEventTypes.BATCH_RECORD_CREATED, Map.of(
-                "batchNo", batchNo,
-                "workOrderId", workOrderId,
-                "formulaCode", formulaCode,
-                "formulaVersion", formulaVersion));
+        transition(BatchRecordStatus.REVIEW); markUpdated();
+        publish(LimsEventTypes.BATCH_RECORD_CREATED, Map.of("batchNo", batchNo, "workOrderId", workOrderId, "formulaCode", formulaCode, "formulaVersion", formulaVersion));
     }
-
-    /**
-     * 批准批记录（REVIEW → APPROVED）。
-     *
-     * @param reviewedBy 审核人
-     */
     public void approve(String reviewedBy) {
-        this.reviewedBy = reviewedBy;
-        this.reviewedAt = Instant.now();
-        transition(BatchRecordStatus.APPROVED);
-        markUpdated();
-        publishEvent(LimsEventTypes.BATCH_RECORD_APPROVED, Map.of(
-                "batchNo", batchNo,
-                "reviewedBy", reviewedBy,
-                "reviewedAt", reviewedAt.toString()));
+        this.reviewedBy = reviewedBy; this.reviewedAt = Instant.now();
+        transition(BatchRecordStatus.APPROVED); markUpdated();
+        publish(LimsEventTypes.BATCH_RECORD_APPROVED, Map.of("batchNo", batchNo, "reviewedBy", reviewedBy, "reviewedAt", reviewedAt.toString()));
     }
-
-    /**
-     * 驳回重审（REVIEW → IN_PROGRESS）。
-     *
-     * @param reason 驳回原因
-     */
-    public void reject(String reason) {
-        transition(BatchRecordStatus.IN_PROGRESS);
-        markUpdated();
-        setExpandProperty("lims.batch.rejectionReason", reason);
-    }
-
-    /**
-     * 归档批记录（APPROVED → ARCHIVED）。
-     */
+    public void reject(String reason) { transition(BatchRecordStatus.IN_PROGRESS); markUpdated(); setExpandProperty("lims.batch.rejectionReason", reason); }
     public void archive() {
-        transition(BatchRecordStatus.ARCHIVED);
-        markUpdated();
-        publishEvent(LimsEventTypes.BATCH_RECORD_ARCHIVED, Map.of(
-                "batchNo", batchNo));
+        transition(BatchRecordStatus.ARCHIVED); markUpdated();
+        publish(LimsEventTypes.BATCH_RECORD_ARCHIVED, Map.of("batchNo", batchNo));
     }
+    public void addProcessRecord(String r) { processRecords.add(r); markUpdated(); }
+    public void addWeighingTask(String t) { weighingTasks.add(t); markUpdated(); }
+    public void addDeviation(String d) { deviations.add(d); markUpdated(); }
+    public boolean isEditable() { return getStatus() == BatchRecordStatus.IN_PROGRESS; }
+    public boolean isArchived() { return getStatus() == BatchRecordStatus.ARCHIVED; }
 
-    // ==================== 记录添加方法 ====================
-
-    /**
-     * 添加工序执行记录。
-     *
-     * @param recordRef 工序记录引用
-     */
-    public void addProcessRecord(String recordRef) {
-        if (this.processRecords == null) {
-            this.processRecords = new ArrayList<>();
-        }
-        this.processRecords.add(recordRef);
-        markUpdated();
-    }
-
-    /**
-     * 添加关联称量任务。
-     *
-     * @param taskCode 称量任务号
-     */
-    public void addWeighingTask(String taskCode) {
-        if (this.weighingTasks == null) {
-            this.weighingTasks = new ArrayList<>();
-        }
-        this.weighingTasks.add(taskCode);
-        markUpdated();
-    }
-
-    /**
-     * 添加偏差记录。
-     *
-     * @param deviation 偏差描述/引用
-     */
-    public void addDeviation(String deviation) {
-        if (this.deviations == null) {
-            this.deviations = new ArrayList<>();
-        }
-        this.deviations.add(deviation);
-        markUpdated();
-    }
-
-    // ==================== 查询方法 ====================
-
-    /**
-     * 判断批记录是否可编辑（仅在 IN_PROGRESS 状态可编辑）。
-     */
-    public boolean isEditable() {
-        return getStatus() == BatchRecordStatus.IN_PROGRESS;
-    }
-
-    /**
-     * 判断批记录是否已归档（终态）。
-     */
-    public boolean isArchived() {
-        return getStatus() == BatchRecordStatus.ARCHIVED;
-    }
-
-    // ==================== 内部 ====================
-
-    private void publishEvent(String eventType, Object payload) {
-        IDomainEvent event = IDomainEvent.of(eventType, "lims", payload);
-        DomainEventPublisher.publish(event);
-    }
-
+    private void publish(String eventType, Object payload) { DomainEventPublisher.publish(IDomainEvent.of(eventType, "lims", payload)); }
 }

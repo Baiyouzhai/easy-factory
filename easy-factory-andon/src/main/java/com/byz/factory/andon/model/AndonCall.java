@@ -5,6 +5,7 @@ import com.byz.factory.event.DomainEventPublisher;
 import com.byz.factory.event.IDomainEvent;
 import com.byz.factory.event.types.AndonEventTypes;
 import com.byz.factory.shared.BaseLifecycleEntity;
+import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -27,64 +28,84 @@ import java.util.Map;
  *
  * <h3>IExpand 约定</h3>
  * <pre>
- *   andon.call.escalationLevel     — 当前上报级别
- *   andon.call.escalatedAt         — 上报时间
- *   andon.call.acknowledgedBy      — 确认人
- *   andon.call.acknowledgedAt      — 确认时间
- *   andon.call.resolution          — 解决方案
- *   andon.call.closedAt            — 关闭时间
+ *   andon.call.escalationReason   — 上报原因
  * </pre>
  *
  * @author 苏政
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
+@Entity
+@Table(name = "andon_call")
 public class AndonCall extends BaseLifecycleEntity<AndonStatus> {
 
     /** 呼叫来源（人工触发/系统自动） */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 10)
     private AndonSource source;
 
     /** 触发类型 */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "trigger_type", nullable = false, length = 30)
     private TriggerType triggerType;
 
     /** 关联工单号 */
+    @Column(name = "work_order_no", length = 100)
     private String workOrderNo;
 
     /** 关联工序编码 */
+    @Column(name = "process_code", length = 100)
     private String processCode;
 
     /** 关联设备编码 */
+    @Column(name = "equipment_code", length = 100)
     private String equipmentCode;
 
     /** 严重程度 */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 15)
     private AndonSeverity severity;
 
     /** 呼叫描述 */
+    @Column(length = 500)
     private String description;
 
     /** 触发人 */
+    @Column(name = "triggered_by", nullable = false, length = 100)
     private String triggeredBy;
 
     /** 触发时间 */
+    @Column(name = "triggered_at", nullable = false)
     private Instant triggeredAt;
 
     /** 当前上报级别（0=未上报，1/2/3/4 逐级递增） */
+    @Column(name = "escalation_level")
     private int escalationLevel;
 
     /** 确认人 */
+    @Column(name = "acknowledged_by", length = 100)
     private String acknowledgedBy;
 
     /** 确认时间 */
+    @Column(name = "acknowledged_at")
     private Instant acknowledgedAt;
 
     /** 解决方案 */
+    @Column(length = 1000)
     private String resolution;
 
     /** 解决时间 */
+    @Column(name = "resolved_at")
     private Instant resolvedAt;
 
     /** 关闭时间 */
+    @Column(name = "closed_at")
     private Instant closedAt;
+
+    /** JPA 要求无参构造 */
+    public AndonCall() {
+        super();
+    }
 
     /**
      * @param code         呼叫编号
@@ -110,8 +131,6 @@ public class AndonCall extends BaseLifecycleEntity<AndonStatus> {
 
     /**
      * 确认呼叫（OPEN → ACKNOWLEDGED）。
-     * <p>
-     * 班组长/车间主任确认收到异常通知，开始处理。
      *
      * @param acknowledgedBy 确认人
      */
@@ -127,10 +146,7 @@ public class AndonCall extends BaseLifecycleEntity<AndonStatus> {
     }
 
     /**
-     * 逐级上报（ACKNOWLEDGED → ESCALATED 或已在 ESCALATED 状态下继续升级）。
-     * <p>
-     * 超时未响应时自动升级通知范围。每次调用 escalationLevel +1。
-     * 上报链：操作工(L0) → 班组长(L1) → 车间主任(L2) → 生产经理(L3) → 厂长(L4)。
+     * 逐级上报（OPEN/ACKNOWLEDGED → ESCALATED 或已在 ESCALATED 状态下继续升级）。
      *
      * @param reason 上报原因（如：超时未响应）
      */
@@ -141,12 +157,10 @@ public class AndonCall extends BaseLifecycleEntity<AndonStatus> {
                     "无法从 " + current + " 状态执行上报操作");
         }
         if (current == AndonStatus.OPEN) {
-            // 从 OPEN 直接升级（紧急情况，如 EMERGENCY 安全事件）
             transition(AndonStatus.ESCALATED);
         } else if (current == AndonStatus.ACKNOWLEDGED) {
             transition(AndonStatus.ESCALATED);
         }
-        // 已在 ESCALATED 状态继续升级（级别递增但不改状态）
         this.escalationLevel++;
         markUpdated();
         setExpandProperty("andon.call.escalationReason", reason);
@@ -159,8 +173,6 @@ public class AndonCall extends BaseLifecycleEntity<AndonStatus> {
 
     /**
      * 标记已解决（ACKNOWLEDGED/ESCALATED → RESOLVED）。
-     * <p>
-     * 异常已被处理，记录解决方案。
      *
      * @param resolution 解决方案描述
      */
@@ -177,8 +189,6 @@ public class AndonCall extends BaseLifecycleEntity<AndonStatus> {
 
     /**
      * 关闭呼叫（RESOLVED → CLOSED 或 OPEN → CLOSED 直接关闭）。
-     * <p>
-     * 呼叫处理完成，归档关闭。
      */
     public void close() {
         transition(AndonStatus.CLOSED);
@@ -191,31 +201,22 @@ public class AndonCall extends BaseLifecycleEntity<AndonStatus> {
 
     // ==================== 查询方法 ====================
 
-    /**
-     * 判断呼叫是否处于活跃状态（未关闭）。
-     */
+    /** 判断呼叫是否处于活跃状态（未关闭）。 */
     public boolean isActive() {
-        AndonStatus s = getStatus();
-        return s != AndonStatus.CLOSED;
+        return getStatus() != AndonStatus.CLOSED;
     }
 
-    /**
-     * 判断呼叫是否需要立即响应（CRITICAL 或 EMERGENCY）。
-     */
+    /** 判断呼叫是否需要立即响应（CRITICAL 或 EMERGENCY）。 */
     public boolean isUrgent() {
         return severity == AndonSeverity.CRITICAL || severity == AndonSeverity.EMERGENCY;
     }
 
-    /**
-     * 判断呼叫是否由系统自动触发。
-     */
+    /** 判断呼叫是否由系统自动触发。 */
     public boolean isAutoTriggered() {
         return source == AndonSource.AUTO;
     }
 
-    /**
-     * 获取呼叫持续时长（秒）。
-     */
+    /** 获取呼叫持续时长（秒）。 */
     public long getDurationSeconds() {
         if (triggeredAt == null) return 0;
         Instant end = (resolvedAt != null) ? resolvedAt : Instant.now();
@@ -224,23 +225,17 @@ public class AndonCall extends BaseLifecycleEntity<AndonStatus> {
 
     // ==================== 字段设置 ====================
 
-    /**
-     * 关联工单。
-     */
+    /** 关联工单。 */
     public void linkWorkOrder(String workOrderNo) {
         this.workOrderNo = workOrderNo;
     }
 
-    /**
-     * 关联工序。
-     */
+    /** 关联工序。 */
     public void linkProcess(String processCode) {
         this.processCode = processCode;
     }
 
-    /**
-     * 关联设备。
-     */
+    /** 关联设备。 */
     public void linkEquipment(String equipmentCode) {
         this.equipmentCode = equipmentCode;
     }

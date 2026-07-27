@@ -1,6 +1,6 @@
 package com.byz.factory.wms;
 
-import com.byz.factory.batch.*;
+import com.byz.factory.wms.*;
 import com.byz.factory.wms.model.InventorySnapshot;
 import com.byz.factory.wms.model.PickingTask;
 import com.byz.factory.wms.model.Receipt;
